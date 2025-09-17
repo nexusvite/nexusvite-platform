@@ -72,8 +72,10 @@ const nextConfig: NextConfig = {
   ...(process.env.ANALYZE === 'true' && {
     webpack: (config: any, { isServer }: { isServer: boolean }) => {
       if (!isServer) {
+        // Dynamically import webpack-bundle-analyzer only when needed
+        // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
         const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
-        config.plugins.push(
+        config.plugins?.push(
           new BundleAnalyzerPlugin({
             analyzerMode: 'static',
             openAnalyzer: false,

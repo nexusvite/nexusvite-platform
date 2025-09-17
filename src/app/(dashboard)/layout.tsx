@@ -112,7 +112,7 @@ export default function DashboardLayout({
                 <Button variant="ghost" className="h-9 w-9 rounded-full p-0">
                   <Avatar className="h-8 w-8">
                     <AvatarImage
-                      src={user.image || ""}
+                      src={user.avatar || ""}
                       alt={user.name || "User"}
                     />
                     <AvatarFallback>

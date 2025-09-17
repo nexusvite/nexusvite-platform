@@ -26,10 +26,10 @@ export async function DELETE(
       success: true,
       message: "App uninstalled successfully"
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error uninstalling app:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to uninstall app" },
+      { error: error instanceof Error ? error.message : "Failed to uninstall app" },
       { status: 400 }
     );
   }

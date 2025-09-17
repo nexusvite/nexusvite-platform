@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ apps });
     } else {
       // Get all available apps
-      const apps = await AppRegistry.getAvailableApps();
+      const apps = await AppRegistry.getAllApps();
       return NextResponse.json({ apps });
     }
   } catch (error) {
@@ -57,11 +57,11 @@ export async function POST(request: NextRequest) {
 
     const installation = await AppRegistry.installApp(appId, userId, organizationId);
     return NextResponse.json({ installation });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error installing app:", error);
 
     // Return 409 if app is already installed
-    if (error.message && error.message.includes("already installed")) {
+    if (error instanceof Error && error.message.includes("already installed")) {
       return NextResponse.json(
         { error: error.message },
         { status: 409 }
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { error: error.message || "Failed to install app" },
+      { error: error instanceof Error ? error.message : "Failed to install app" },
       { status: 400 }
     );
   }

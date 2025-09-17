@@ -13,6 +13,7 @@ import { Zap, Github, Mail, Eye, EyeOff } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { authClient } from "@/lib/auth-client";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -37,39 +38,37 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: data.email,
-          password: data.password,
-        }),
+      const result = await authClient.signIn.email({
+        email: data.email,
+        password: data.password,
+        callbackURL: "/dashboard",
+        fetchOptions: {
+          onSuccess: () => {
+            toast.success("Welcome back!");
+            router.push("/dashboard");
+          },
+          onError: (ctx) => {
+            console.error("Login error context:", ctx);
+            if (ctx.response?.status === 401 || ctx.response?.status === 422) {
+              toast.error("Invalid email or password. Please try again.");
+            } else {
+              toast.error(ctx.error?.message || "Failed to sign in");
+            }
+          }
+        }
       });
 
-      if (response.ok) {
-        const result = await response.json();
-
-        // Store user data in sessionStorage for demo
-        if (result.user && result.token) {
-          sessionStorage.setItem("user", JSON.stringify(result.user));
-          sessionStorage.setItem("token", result.token);
-
-          // Force a small delay to ensure storage is set
-          await new Promise(resolve => setTimeout(resolve, 100));
-        }
-
+      // If the result has data, consider it a success
+      if (result?.data) {
         toast.success("Welcome back!");
-
-        // Use window.location for hard redirect to ensure session is loaded
-        window.location.href = "/dashboard";
-      } else {
-        const error = await response.json();
-        toast.error(error.error || "Invalid credentials");
+        router.push("/dashboard");
+      } else if (!result?.error) {
+        // If no error but also no data, still try to navigate
+        router.push("/dashboard");
       }
-    } catch (error) {
-      toast.error("Something went wrong. Please try again.");
+    } catch (error: any) {
+      console.error("Login error:", error);
+      toast.error("Invalid email or password. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -78,8 +77,12 @@ export default function LoginPage() {
   const signInWithGoogle = async () => {
     setIsLoading(true);
     try {
-      window.location.href = "/api/auth/sign-in/google";
+      await authClient.signIn.social({
+        provider: "google",
+        callbackURL: "/dashboard"
+      });
     } catch (error) {
+      console.error("Google sign-in error:", error);
       toast.error("Something went wrong. Please try again.");
       setIsLoading(false);
     }
@@ -88,8 +91,12 @@ export default function LoginPage() {
   const signInWithGithub = async () => {
     setIsLoading(true);
     try {
-      window.location.href = "/api/auth/sign-in/github";
+      await authClient.signIn.social({
+        provider: "github",
+        callbackURL: "/dashboard"
+      });
     } catch (error) {
+      console.error("GitHub sign-in error:", error);
       toast.error("Something went wrong. Please try again.");
       setIsLoading(false);
     }
@@ -113,12 +120,6 @@ export default function LoginPage() {
             <CardDescription>
               Sign in to your account to continue
             </CardDescription>
-            {/* Demo Credentials Info */}
-            <div className="mt-4 p-3 rounded-lg bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800">
-              <p className="text-sm font-medium text-blue-900 dark:text-blue-100">Demo Credentials:</p>
-              <p className="text-sm text-blue-800 dark:text-blue-200">Email: admin@nexusvite.com</p>
-              <p className="text-sm text-blue-800 dark:text-blue-200">Password: admin123</p>
-            </div>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Social Login */}
@@ -219,7 +220,7 @@ export default function LoginPage() {
             </form>
 
             <div className="text-center text-sm">
-              Don't have an account?{" "}
+              Don&apos;t have an account?{" "}
               <Link href="/register" className="text-primary hover:underline">
                 Sign up
               </Link>

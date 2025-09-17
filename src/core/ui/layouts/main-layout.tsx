@@ -1,6 +1,7 @@
 'use client';
 
 import { ReactNode } from 'react';
+import Link from 'next/link';
 import { NavigationMenu } from '@/components/ui/navigation-menu';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -33,12 +34,12 @@ export function MainLayout({ children, user }: MainLayoutProps) {
         <div className="container flex h-14 items-center">
           {/* Logo */}
           <div className="mr-4 flex">
-            <a className="mr-6 flex items-center space-x-2" href="/">
+            <Link className="mr-6 flex items-center space-x-2" href="/">
               <Package className="h-6 w-6" />
               <span className="hidden font-bold sm:inline-block">
                 NexusVite Platform
               </span>
-            </a>
+            </Link>
           </div>
 
           {/* Navigation */}
