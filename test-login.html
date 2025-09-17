@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test NexusVite Login</title>
+</head>
+<body>
+    <h1>Test NexusVite Login</h1>
+    <button onclick="testLogin()">Test Login</button>
+    <div id="result"></div>
+
+    <script>
+        async function testLogin() {
+            const resultDiv = document.getElementById('result');
+
+            try {
+                // Test login
+                const response = await fetch('http://localhost:3000/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: 'admin@nexusvite.com',
+                        password: 'admin123'
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <h2 style="color: green;">Login Successful!</h2>
+                        <p>User: ${data.user.email}</p>
+                        <p>Role: ${data.user.role}</p>
+                        <p>Token: ${data.token}</p>
+                        <br>
+                        <p>Now you can go to <a href="http://localhost:3000/login">Login Page</a> and use these credentials:</p>
+                        <ul>
+                            <li>Email: admin@nexusvite.com</li>
+                            <li>Password: admin123</li>
+                        </ul>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<h2 style="color: red;">Login Failed: ${data.error}</h2>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<h2 style="color: red;">Error: ${error.message}</h2>`;
+            }
+        }
+    </script>
+</body>
+</html>
