@@ -33,10 +33,10 @@ export async function POST(request: NextRequest) {
         message: "App was not installed"
       });
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error disconnecting app:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to disconnect app" },
+      { error: error instanceof Error ? error.message : "Failed to disconnect app" },
       { status: 500 }
     );
   }

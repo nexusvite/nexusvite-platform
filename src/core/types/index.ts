@@ -47,8 +47,8 @@ export interface AppSetting {
   label: string;
   description?: string;
   required?: boolean;
-  default?: any;
-  options?: Array<{ label: string; value: any }>;
+  default?: string | number | boolean;
+  options?: Array<{ label: string; value: string | number | boolean }>;
 }
 
 export type AppStatus = 'active' | 'inactive' | 'pending' | 'suspended';
@@ -84,7 +84,7 @@ export interface Installation {
   id: string;
   appId: string;
   userId: string;
-  settings: Record<string, any>;
+  settings: Record<string, unknown>;
   status: 'active' | 'inactive';
   installedAt: Date;
 }

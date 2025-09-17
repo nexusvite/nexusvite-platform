@@ -28,7 +28,7 @@ export type { DatabaseConfig } from '@/core/types';
 export async function testConnection() {
   try {
     const result = await client`SELECT 1 as test`;
-    return result.length === 1 && result[0].test === 1;
+    return result.length === 1 && result[0]?.test === 1;
   } catch (error) {
     console.error('Database connection test failed:', error);
     return false;

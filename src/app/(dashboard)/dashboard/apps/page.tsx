@@ -35,7 +35,11 @@ interface App {
   tags: string[];
   pricing?: {
     model: string;
-    plans: any[];
+    plans: {
+      name: string;
+      price: number;
+      features: string[];
+    }[];
   };
 }
 
@@ -47,7 +51,7 @@ interface InstalledApp {
   status: string;
 }
 
-const categoryIcons: Record<string, any> = {
+const categoryIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   analytics: BarChart3,
   business: Briefcase,
   operations: Package,

@@ -5,20 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Activity,
   ArrowUpRight,
   CreditCard,
   DollarSign,
-  Download,
   Package,
   Plus,
   Settings,
@@ -27,9 +19,57 @@ import {
   Zap,
 } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
+
+interface DashboardStats {
+  stats: {
+    installedApps: { count: number; change: string; growth: string };
+    apiRequests: { count: number; change: string; growth: string };
+    activeUsers: { count: number; change: string; growth: string };
+    monthlySpend: { amount: string; change: string; growth: string };
+  };
+  recentActivity: Array<{
+    name: string;
+    description: string;
+    icon: string;
+    status: string;
+  }>;
+  recommendedApps: Array<{
+    id: string;
+    name: string;
+    description: string;
+    category: string;
+    installs: string;
+    rating: string;
+  }>;
+}
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchDashboardStats();
+  }, []);
+
+  const fetchDashboardStats = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/dashboard/stats');
+      if (!response.ok) {
+        throw new Error('Failed to fetch dashboard stats');
+      }
+      const data = await response.json();
+      setStats(data);
+    } catch (err) {
+      console.error('Error fetching dashboard stats:', err);
+      setError('Failed to load dashboard data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -40,7 +80,7 @@ export default function DashboardPage() {
             Welcome back, {user?.name?.split(" ")[0] || "User"}!
           </h1>
           <p className="text-muted-foreground">
-            Here's what's happening with your apps today.
+            Here&apos;s what&apos;s happening with your apps today.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -61,10 +101,21 @@ export default function DashboardPage() {
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12</div>
-            <p className="text-xs text-muted-foreground">
-              +2 from last month
-            </p>
+            {loading ? (
+              <>
+                <Skeleton className="h-8 w-16 mb-2" />
+                <Skeleton className="h-4 w-24" />
+              </>
+            ) : (
+              <>
+                <div className="text-2xl font-bold">
+                  {stats?.stats.installedApps.count || 0}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {stats?.stats.installedApps.change || "No change"}
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
         <Card>
@@ -73,10 +124,21 @@ export default function DashboardPage() {
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">2,350</div>
-            <p className="text-xs text-muted-foreground">
-              +180.1% from last month
-            </p>
+            {loading ? (
+              <>
+                <Skeleton className="h-8 w-20 mb-2" />
+                <Skeleton className="h-4 w-28" />
+              </>
+            ) : (
+              <>
+                <div className="text-2xl font-bold">
+                  {stats?.stats.apiRequests.count.toLocaleString() || 0}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {stats?.stats.apiRequests.change || "No change"}
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
         <Card>
@@ -85,10 +147,21 @@ export default function DashboardPage() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">573</div>
-            <p className="text-xs text-muted-foreground">
-              +201 since last hour
-            </p>
+            {loading ? (
+              <>
+                <Skeleton className="h-8 w-16 mb-2" />
+                <Skeleton className="h-4 w-24" />
+              </>
+            ) : (
+              <>
+                <div className="text-2xl font-bold">
+                  {stats?.stats.activeUsers.count || 0}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {stats?.stats.activeUsers.change || "No change"}
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
         <Card>
@@ -97,10 +170,21 @@ export default function DashboardPage() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">$45.23</div>
-            <p className="text-xs text-muted-foreground">
-              +19% from last month
-            </p>
+            {loading ? (
+              <>
+                <Skeleton className="h-8 w-20 mb-2" />
+                <Skeleton className="h-4 w-24" />
+              </>
+            ) : (
+              <>
+                <div className="text-2xl font-bold">
+                  {stats?.stats.monthlySpend.amount || "$0.00"}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {stats?.stats.monthlySpend.change || "No change"}
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -116,57 +200,49 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {[
-                {
-                  name: "Slack Integration",
-                  description: "Installed 2 hours ago",
-                  icon: "S",
-                  status: "installed",
-                },
-                {
-                  name: "GitHub Sync",
-                  description: "Updated 1 day ago",
-                  icon: "G",
-                  status: "updated",
-                },
-                {
-                  name: "Analytics Dashboard",
-                  description: "Configured 3 days ago",
-                  icon: "A",
-                  status: "configured",
-                },
-                {
-                  name: "Email Automation",
-                  description: "Installed 1 week ago",
-                  icon: "E",
-                  status: "installed",
-                },
-              ].map((activity, index) => (
-                <div key={index} className="flex items-center gap-4">
-                  <Avatar className="h-10 w-10">
-                    <AvatarFallback className="bg-primary/10 text-primary">
-                      {activity.icon}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 space-y-1">
-                    <p className="text-sm font-medium leading-none">
-                      {activity.name}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {activity.description}
-                    </p>
+              {loading ? (
+                Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-4">
+                    <Skeleton className="h-10 w-10 rounded-full" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-3 w-24" />
+                    </div>
+                    <Skeleton className="h-6 w-20" />
                   </div>
-                  <Badge
-                    variant={
-                      activity.status === "installed" ? "default" :
-                      activity.status === "updated" ? "secondary" :
-                      "outline"
-                    }
-                  >
-                    {activity.status}
-                  </Badge>
+                ))
+              ) : stats?.recentActivity.length ? (
+                stats.recentActivity.map((activity, index) => (
+                  <div key={index} className="flex items-center gap-4">
+                    <Avatar className="h-10 w-10">
+                      <AvatarFallback className="bg-primary/10 text-primary">
+                        {activity.icon}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 space-y-1">
+                      <p className="text-sm font-medium leading-none">
+                        {activity.name}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {activity.description}
+                      </p>
+                    </div>
+                    <Badge
+                      variant={
+                        activity.status === "active" || activity.status === "installed" ? "default" :
+                        activity.status === "updated" ? "secondary" :
+                        "outline"
+                      }
+                    >
+                      {activity.status}
+                    </Badge>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center text-muted-foreground py-8">
+                  No recent activity. Install some apps to get started!
                 </div>
-              ))}
+              )}
             </div>
           </CardContent>
         </Card>
@@ -228,57 +304,61 @@ export default function DashboardPage() {
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {[
-              {
-                name: "Notion Integration",
-                description: "Sync your workspace with Notion",
-                category: "Productivity",
-                installs: "10K+",
-                rating: 4.8,
-              },
-              {
-                name: "Stripe Payments",
-                description: "Accept payments in your app",
-                category: "Finance",
-                installs: "50K+",
-                rating: 4.9,
-              },
-              {
-                name: "SendGrid Email",
-                description: "Powerful email delivery service",
-                category: "Communication",
-                installs: "25K+",
-                rating: 4.7,
-              },
-            ].map((app, index) => (
-              <Card key={index} className="p-4">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                    <Zap className="h-5 w-5 text-primary" />
-                  </div>
-                  <div className="flex-1 space-y-1">
-                    <p className="text-sm font-medium">{app.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {app.description}
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary" className="text-xs">
-                        {app.category}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground">
-                        ⭐ {app.rating} • {app.installs}
-                      </span>
+            {loading ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                <Card key={i} className="p-4">
+                  <Skeleton className="h-32 w-full" />
+                </Card>
+              ))
+            ) : stats?.recommendedApps.length ? (
+              stats.recommendedApps.map((app, index) => (
+                <Card key={index} className="p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                      <Zap className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <p className="text-sm font-medium">{app.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {app.description}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="text-xs">
+                          {app.category}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          ⭐ {app.rating} • {app.installs}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-                <Button size="sm" className="w-full mt-3">
-                  Install
-                </Button>
-              </Card>
-            ))}
+                  <Button size="sm" className="w-full mt-3" asChild>
+                    <Link href={`/dashboard/apps/${app.id}`}>
+                      View Details
+                    </Link>
+                  </Button>
+                </Card>
+              ))
+            ) : (
+              <div className="col-span-full text-center text-muted-foreground py-8">
+                No apps available at the moment.
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
+
+      {/* Error Message */}
+      {error && (
+        <Card className="border-destructive">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-destructive">
+              <Activity className="h-5 w-5" />
+              <p>{error}</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

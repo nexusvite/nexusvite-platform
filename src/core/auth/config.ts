@@ -1,19 +1,18 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { createId } from "@paralleldrive/cuid2";
 import { db } from "@/core/database";
 import { config } from "@/core/config";
-import * as schema from "@/core/database/schemas";
+import * as betterAuthSchema from "@/core/database/schemas/better-auth";
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: "pg",
-    schema: {
-      user: schema.users,
-      account: schema.accounts,
-      session: schema.sessions,
-      verificationToken: schema.verificationTokens,
-    },
+    schema: betterAuthSchema,
   }),
+
+  baseURL: config.auth.baseUrl || "http://localhost:3000",
+  secret: config.auth.secret,
 
   emailAndPassword: {
     enabled: true,
@@ -38,21 +37,13 @@ export const auth = betterAuth({
     updateAge: 60 * 60 * 24, // 1 day
   },
 
-  user: {
-    additionalFields: {
-      role: {
-        type: "string",
-        defaultValue: "user",
-        required: false,
-      },
-    },
-  },
 
   advanced: {
-    generateId: () => {
-      // Using the same ID generation as our schema
-      const { createId } = require('@paralleldrive/cuid2');
-      return createId();
+    database: {
+      generateId: () => {
+        // Using the same ID generation as our schema
+        return createId();
+      },
     },
   },
 
@@ -62,4 +53,4 @@ export const auth = betterAuth({
 });
 
 export type Session = typeof auth.$Infer.Session;
-export type User = typeof auth.$Infer.User;
+export type User = typeof auth.$Infer.Session.user;

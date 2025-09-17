@@ -45,15 +45,19 @@ interface InstalledApp {
     };
     pricing?: {
       model: string;
-      plans: any[];
+      plans: {
+        name: string;
+        price: number;
+        features: string[];
+      }[];
     };
   };
   installDate: string;
   status: string;
-  settings?: Record<string, any>;
+  settings?: Record<string, unknown>;
 }
 
-const categoryIcons: Record<string, any> = {
+const categoryIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   analytics: BarChart3,
   business: Briefcase,
   operations: Package,

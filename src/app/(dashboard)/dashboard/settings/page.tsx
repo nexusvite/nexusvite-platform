@@ -138,7 +138,7 @@ export default function SettingsPage() {
               {/* Avatar Section */}
               <div className="flex items-center gap-6">
                 <Avatar className="h-24 w-24">
-                  <AvatarImage src={user?.image || ""} alt={user?.name || "User"} />
+                  <AvatarImage src={user?.avatar || ""} alt={user?.name || "User"} />
                   <AvatarFallback className="text-2xl">
                     {user?.name?.charAt(0)?.toUpperCase() || "U"}
                   </AvatarFallback>

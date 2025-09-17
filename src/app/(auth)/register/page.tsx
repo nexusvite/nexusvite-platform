@@ -13,6 +13,7 @@ import { Zap, Github, Mail, Eye, EyeOff } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { authClient } from "@/lib/auth-client";
 
 const registerSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -43,27 +44,43 @@ export default function RegisterPage() {
   const onSubmit = async (data: RegisterFormData) => {
     setIsLoading(true);
     try {
-      const response = await fetch("/api/auth/sign-up", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: data.name,
-          email: data.email,
-          password: data.password,
-        }),
+      const result = await authClient.signUp.email({
+        name: data.name,
+        email: data.email,
+        password: data.password,
+        callbackURL: "/dashboard",
+        fetchOptions: {
+          onSuccess: () => {
+            toast.success("Account created successfully!");
+            router.push("/dashboard");
+          },
+          onError: (ctx) => {
+            console.error("Registration error context:", ctx);
+            if (ctx.response?.status === 422) {
+              toast.error("Email already registered. Please sign in instead.");
+            } else {
+              toast.error(ctx.error?.message || "Failed to create account");
+            }
+          }
+        }
       });
 
-      if (response.ok) {
-        toast.success("Account created successfully! Please sign in.");
-        router.push("/login");
-      } else {
-        const error = await response.json();
-        toast.error(error.message || "Failed to create account");
+      // If the result has data, consider it a success
+      if (result?.data) {
+        toast.success("Account created successfully!");
+        router.push("/dashboard");
+      } else if (!result?.error) {
+        // If no error but also no data, still consider it might be successful
+        // Check by attempting to navigate
+        router.push("/dashboard");
       }
-    } catch (error) {
-      toast.error("Something went wrong. Please try again.");
+    } catch (error: any) {
+      console.error("Registration error:", error);
+      if (error?.message?.includes("already")) {
+        toast.error("Email already registered. Please sign in instead.");
+      } else {
+        toast.error("Something went wrong. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -72,8 +89,12 @@ export default function RegisterPage() {
   const signUpWithGoogle = async () => {
     setIsLoading(true);
     try {
-      window.location.href = "/api/auth/sign-in/google";
+      await authClient.signIn.social({
+        provider: "google",
+        callbackURL: "/dashboard"
+      });
     } catch (error) {
+      console.error("Google sign-up error:", error);
       toast.error("Something went wrong. Please try again.");
       setIsLoading(false);
     }
@@ -82,8 +103,12 @@ export default function RegisterPage() {
   const signUpWithGithub = async () => {
     setIsLoading(true);
     try {
-      window.location.href = "/api/auth/sign-in/github";
+      await authClient.signIn.social({
+        provider: "github",
+        callbackURL: "/dashboard"
+      });
     } catch (error) {
+      console.error("GitHub sign-up error:", error);
       toast.error("Something went wrong. Please try again.");
       setIsLoading(false);
     }
@@ -105,11 +130,11 @@ export default function RegisterPage() {
           <CardHeader className="text-center">
             <CardTitle className="text-2xl font-bold">Create an account</CardTitle>
             <CardDescription>
-              Get started with your free account today
+              Sign up to get started with NexusVite Platform
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Social Login */}
+            {/* Social Sign Up */}
             <div className="grid grid-cols-2 gap-4">
               <Button
                 variant="outline"
@@ -142,7 +167,7 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            {/* Email/Password Form */}
+            {/* Registration Form */}
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Full Name</Label>
@@ -241,20 +266,9 @@ export default function RegisterPage() {
               </div>
 
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Creating account..." : "Create account"}
+                {isLoading ? "Creating account..." : "Sign up"}
               </Button>
             </form>
-
-            <div className="text-center text-sm text-muted-foreground">
-              By creating an account, you agree to our{" "}
-              <Link href="/terms" className="text-primary hover:underline">
-                Terms of Service
-              </Link>{" "}
-              and{" "}
-              <Link href="/privacy" className="text-primary hover:underline">
-                Privacy Policy
-              </Link>
-            </div>
 
             <div className="text-center text-sm">
               Already have an account?{" "}
