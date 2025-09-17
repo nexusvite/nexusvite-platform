@@ -1,0 +1,16 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "NexusVite Production",
+      "Group": "Servers",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "nexusvite_platform",
+      "Username": "postgres",
+      "Password": "postgres_password",
+      "SSLMode": "prefer",
+      "PassFile": "",
+      "Comment": "Production database for NexusVite Platform"
+    }
+  }
+}

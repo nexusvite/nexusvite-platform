@@ -1,0 +1,28 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "NexusVite Development",
+      "Group": "Development",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "nexusvite_platform_dev",
+      "Username": "dev_user",
+      "Password": "dev_password",
+      "SSLMode": "prefer",
+      "PassFile": "",
+      "Comment": "Development database for NexusVite Platform"
+    },
+    "2": {
+      "Name": "NexusVite Test",
+      "Group": "Testing",
+      "Host": "postgres-test",
+      "Port": 5432,
+      "MaintenanceDB": "nexusvite_platform_test",
+      "Username": "test_user",
+      "Password": "test_password",
+      "SSLMode": "prefer",
+      "PassFile": "",
+      "Comment": "Test database for NexusVite Platform"
+    }
+  }
+}
