@@ -52,15 +52,13 @@ export interface InstalledApp {
   id: string;
   appId: string;
   userId: string;
-  organizationId?: string;
   manifest: AppManifest;
   installDate: Date;
-  status: 'active' | 'suspended' | 'pending';
+  status: 'active' | 'inactive';
   settings?: Record<string, unknown>;
 }
 
-// In-memory storage for demo installations (will be replaced with database later)
-const installedApps: InstalledApp[] = [];
+// Removed in-memory storage - now using database
 
 export class AppRegistry {
   // Get all available apps from database
@@ -271,47 +269,66 @@ export class AppRegistry {
     }
   }
 
-  // Install an app for a user (temporarily using in-memory storage)
-  static async installApp(appId: string, userId: string, organizationId?: string): Promise<InstalledApp> {
+  // Install an app for a user in database
+  static async installApp(appId: string, userId: string): Promise<InstalledApp> {
     const manifest = await this.getAppById(appId);
     if (!manifest) {
       throw new Error(`App ${appId} not found`);
     }
 
     // Check if already installed
-    const existing = installedApps.find(
-      app => app.appId === appId && app.userId === userId
-    );
-    if (existing) {
+    const existing = await db
+      .select()
+      .from(installations)
+      .where(and(
+        eq(installations.appId, appId),
+        eq(installations.userId, userId)
+      ))
+      .limit(1);
+
+    if (existing.length > 0) {
       throw new Error(`App ${appId} is already installed`);
     }
 
-    const installation: InstalledApp = {
-      id: `install_${Date.now()}`,
+    const { createId } = await import('@paralleldrive/cuid2');
+    const installationId = createId();
+
+    // Insert into database
+    await db.insert(installations).values({
+      id: installationId,
       appId,
       userId,
-      ...(organizationId && { organizationId }),
+      settings: {
+        embedMode: true // Default to embedded mode
+      },
+      status: 'active',
+      installedAt: new Date(),
+      updatedAt: new Date()
+    });
+
+    const installation: InstalledApp = {
+      id: installationId,
+      appId,
+      userId,
       manifest,
       installDate: new Date(),
       status: 'active',
-      settings: {}
+      settings: {
+        embedMode: true
+      }
     };
 
-    installedApps.push(installation);
     return installation;
   }
 
-  // Uninstall an app
+  // Uninstall an app from database
   static async uninstallApp(installationId: string, userId: string): Promise<void> {
-    const index = installedApps.findIndex(
-      app => app.id === installationId && app.userId === userId
-    );
+    // Get installation first to send webhook
+    const installation = await this.getInstallation(installationId, userId);
 
-    if (index === -1) {
+    if (!installation) {
       throw new Error(`Installation ${installationId} not found`);
     }
-
-    const installation = installedApps[index];
 
     // Send webhook to the app if it has a webhook URL
     if (installation?.manifest.webhooks?.uninstall) {
@@ -334,43 +351,130 @@ export class AppRegistry {
       }
     }
 
-    installedApps.splice(index, 1);
+    // Delete from database
+    await db
+      .delete(installations)
+      .where(and(
+        eq(installations.id, installationId),
+        eq(installations.userId, userId)
+      ));
   }
 
-  // Get installed apps for a user
+  // Get installed apps for a user from database
   static async getInstalledApps(userId: string): Promise<InstalledApp[]> {
-    return installedApps.filter(app => app.userId === userId);
+    try {
+      const result = await db
+        .select()
+        .from(installations)
+        .where(eq(installations.userId, userId));
+
+      // Get app manifests for each installation
+      const installedAppsData: InstalledApp[] = [];
+
+      for (const installation of result) {
+        const manifest = await this.getAppById(installation.appId);
+        if (manifest) {
+          installedAppsData.push({
+            id: installation.id,
+            appId: installation.appId,
+            userId: installation.userId,
+            manifest,
+            installDate: installation.installedAt,
+            status: installation.status as 'active' | 'inactive',
+            settings: installation.settings as Record<string, unknown>
+          });
+        }
+      }
+
+      return installedAppsData;
+    } catch (error) {
+      console.error('Error fetching installed apps:', error);
+      return [];
+    }
   }
 
-  // Get installation by ID
+  // Get installation by ID from database
   static async getInstallation(installationId: string, userId: string): Promise<InstalledApp | null> {
-    return installedApps.find(
-      app => app.id === installationId && app.userId === userId
-    ) || null;
+    try {
+      const result = await db
+        .select()
+        .from(installations)
+        .where(and(
+          eq(installations.id, installationId),
+          eq(installations.userId, userId)
+        ))
+        .limit(1);
+
+      if (result.length === 0) {
+        return null;
+      }
+
+      const installation = result[0];
+      const manifest = await this.getAppById(installation.appId);
+
+      if (!manifest) {
+        return null;
+      }
+
+      return {
+        id: installation.id,
+        appId: installation.appId,
+        userId: installation.userId,
+        manifest,
+        installDate: installation.installedAt,
+        status: installation.status as 'active' | 'inactive',
+        settings: installation.settings as Record<string, unknown>
+      };
+    } catch (error) {
+      console.error('Error fetching installation:', error);
+      return null;
+    }
   }
 
-  // Update app settings
+  // Update app settings in database
   static async updateAppSettings(
     installationId: string,
     userId: string,
     settings: Record<string, unknown>
   ): Promise<InstalledApp> {
-    const installation = installedApps.find(
-      app => app.id === installationId && app.userId === userId
-    );
+    // Get current installation
+    const installation = await this.getInstallation(installationId, userId);
 
     if (!installation) {
       throw new Error(`Installation ${installationId} not found`);
     }
 
-    installation.settings = { ...installation.settings, ...settings };
+    // Merge settings
+    const updatedSettings = { ...installation.settings, ...settings };
+
+    // Update in database
+    await db
+      .update(installations)
+      .set({ settings: updatedSettings })
+      .where(and(
+        eq(installations.id, installationId),
+        eq(installations.userId, userId)
+      ));
+
+    installation.settings = updatedSettings;
     return installation;
   }
 
-  // Check if app is installed
+  // Check if app is installed in database
   static async isAppInstalled(appId: string, userId: string): Promise<boolean> {
-    return installedApps.some(
-      app => app.appId === appId && app.userId === userId
-    );
+    try {
+      const result = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(installations)
+        .where(and(
+          eq(installations.appId, appId),
+          eq(installations.userId, userId)
+        ));
+
+      return result[0].count > 0;
+    } catch (error) {
+      console.error('Error checking app installation:', error);
+      return false;
+    }
   }
 }

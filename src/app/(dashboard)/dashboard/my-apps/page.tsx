@@ -54,7 +54,10 @@ interface InstalledApp {
   };
   installDate: string;
   status: string;
-  settings?: Record<string, unknown>;
+  settings?: {
+    embedMode?: boolean;
+    [key: string]: unknown;
+  };
 }
 
 const categoryIcons: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -65,8 +68,7 @@ const categoryIcons: Record<string, React.ComponentType<{ className?: string }>>
 
 const statusConfig = {
   active: { icon: CheckCircle, color: "text-green-500", bgColor: "bg-green-500/10" },
-  pending: { icon: Clock, color: "text-yellow-500", bgColor: "bg-yellow-500/10" },
-  suspended: { icon: AlertCircle, color: "text-red-500", bgColor: "bg-red-500/10" },
+  inactive: { icon: AlertCircle, color: "text-red-500", bgColor: "bg-red-500/10" },
 };
 
 export default function MyAppsPage() {
@@ -124,9 +126,22 @@ export default function MyAppsPage() {
     }
   };
 
-  // Open app in new tab
-  const openApp = (homepage: string) => {
-    window.open(homepage, "_blank");
+  // Open app based on embed mode setting
+  const openApp = (installation: InstalledApp) => {
+    const embedMode = installation.settings?.embedMode ?? false;
+
+    if (embedMode) {
+      // Open in embedded mode (navigate to embedded view)
+      window.location.href = `/dashboard/apps/${installation.id}/view`;
+    } else {
+      // Open in new tab
+      window.open(installation.manifest.homepage, "_blank");
+    }
+  };
+
+  // Navigate to app settings
+  const openSettings = (installationId: string) => {
+    window.location.href = `/dashboard/apps/${installationId}/settings`;
   };
 
   // Filter apps based on search query
@@ -216,11 +231,11 @@ export default function MyAppsPage() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => openApp(app.homepage)}>
+                        <DropdownMenuItem onClick={() => openApp(installation)}>
                           <ExternalLink className="mr-2 h-4 w-4" />
-                          Open App
+                          {installation.settings?.embedMode ? "Open App" : "Open in New Tab"}
                         </DropdownMenuItem>
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => openSettings(installation.id)}>
                           <Settings className="mr-2 h-4 w-4" />
                           Settings
                         </DropdownMenuItem>
@@ -273,10 +288,10 @@ export default function MyAppsPage() {
                 <CardFooter className="pt-0">
                   <Button
                     className="w-full"
-                    onClick={() => openApp(app.homepage)}
+                    onClick={() => openApp(installation)}
                   >
                     <ExternalLink className="mr-2 h-4 w-4" />
-                    Open App
+                    {installation.settings?.embedMode ? "Open App" : "Open in New Tab"}
                   </Button>
                 </CardFooter>
               </Card>

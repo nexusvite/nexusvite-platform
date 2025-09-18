@@ -49,6 +49,9 @@ interface InstalledApp {
   manifest: App;
   installDate: string;
   status: string;
+  settings?: {
+    embedMode?: boolean;
+  };
 }
 
 const categoryIcons: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -167,9 +170,17 @@ export default function AppsPage() {
     return installedApps.some(app => app.appId === appId);
   };
 
-  // Open app in new tab
-  const openApp = (homepage: string) => {
-    window.open(homepage, "_blank");
+  // Open app based on embed mode setting
+  const openApp = (installation: InstalledApp) => {
+    const embedMode = installation.settings?.embedMode ?? false;
+
+    if (embedMode) {
+      // Open in embedded mode (navigate to embedded view)
+      window.location.href = `/dashboard/apps/${installation.id}/view`;
+    } else {
+      // Open in new tab
+      window.open(installation.manifest.homepage, "_blank");
+    }
   };
 
   // Filter apps based on search query
@@ -312,7 +323,12 @@ export default function AppsPage() {
                             size="sm"
                             variant="secondary"
                             className="flex-1"
-                            onClick={() => openApp(app.homepage)}
+                            onClick={() => {
+                              const installation = installedApps.find(i => i.appId === app.id);
+                              if (installation) {
+                                openApp(installation);
+                              }
+                            }}
                           >
                             <ExternalLink className="mr-2 h-4 w-4" />
                             Open App
@@ -390,10 +406,10 @@ export default function AppsPage() {
                           size="sm"
                           variant="default"
                           className="flex-1"
-                          onClick={() => openApp(app.homepage)}
+                          onClick={() => openApp(installation)}
                         >
                           <ExternalLink className="mr-2 h-4 w-4" />
-                          Open
+                          {installation.settings?.embedMode ? "Open" : "Open in New Tab"}
                         </Button>
                         <Button
                           size="sm"

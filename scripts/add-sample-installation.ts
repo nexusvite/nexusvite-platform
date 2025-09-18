@@ -15,7 +15,9 @@ async function addSampleInstallation() {
       appId: "com.nexusvite.analytics",
       status: "active",
       installedAt: new Date(),
-      settings: {}
+      settings: {
+        embedMode: true // Enable embedded mode by default
+      }
     });
 
     console.log("✓ Successfully added sample installation");
