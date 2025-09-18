@@ -20,6 +20,32 @@ const APP_MANIFESTS = [
     homepage: "http://localhost:3001",
     category: "analytics",
     tags: ["analytics", "reports", "dashboard", "metrics"],
+    navigation: [
+      {
+        title: "Dashboard",
+        path: "/",
+        icon: "LayoutDashboard",
+        description: "Analytics overview"
+      },
+      {
+        title: "Real-Time",
+        path: "/realtime",
+        icon: "Activity",
+        description: "Live analytics data"
+      },
+      {
+        title: "Reports",
+        path: "/reports",
+        icon: "FileText",
+        description: "Detailed reports"
+      },
+      {
+        title: "Settings",
+        path: "/settings",
+        icon: "Settings",
+        description: "Analytics settings"
+      }
+    ],
     authentication: {
       type: "oauth2",
       scopes: ["read:users", "read:organizations", "read:apps", "read:transactions"],

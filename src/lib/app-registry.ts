@@ -4,6 +4,15 @@ import { installations } from '@/core/database/schemas/installations';
 import { eq, and, sql } from 'drizzle-orm';
 
 // Export interfaces for compatibility
+export interface AppNavItem {
+  title: string;
+  path: string;
+  icon?: string;
+  description?: string;
+  badge?: string;
+  children?: AppNavItem[];
+}
+
 export interface AppManifest {
   id: string;
   name: string;
@@ -18,6 +27,7 @@ export interface AppManifest {
   homepage: string;
   category: string;
   tags: string[];
+  navigation?: AppNavItem[];
   authentication: {
     type: string;
     scopes: string[];
@@ -83,6 +93,7 @@ export class AppRegistry {
           homepage: manifest.homepage,
           category: manifest.category || 'general',
           tags: manifest.tags || [],
+          navigation: manifest.navigation || [],
           authentication: manifest.authentication || {
             type: 'oauth2',
             scopes: [],
@@ -153,6 +164,7 @@ export class AppRegistry {
           homepage: manifest.homepage,
           category: category,
           tags: manifest.tags || [],
+          navigation: manifest.navigation || [],
           authentication: manifest.authentication || {
             type: 'oauth2',
             scopes: [],
@@ -202,6 +214,7 @@ export class AppRegistry {
           homepage: manifest.homepage,
           category: manifest.category || 'general',
           tags: manifest.tags || [],
+          navigation: manifest.navigation || [],
           authentication: manifest.authentication || {
             type: 'oauth2',
             scopes: [],
@@ -251,6 +264,7 @@ export class AppRegistry {
         homepage: manifest.homepage,
         category: manifest.category || 'general',
         tags: manifest.tags || [],
+        navigation: manifest.navigation || [],
         authentication: manifest.authentication || {
           type: 'oauth2',
           scopes: [],
