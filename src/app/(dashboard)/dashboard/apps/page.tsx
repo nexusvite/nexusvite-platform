@@ -109,6 +109,15 @@ export default function AppsPage() {
       });
 
       if (response.ok) {
+        const data = await response.json();
+
+        // If app requires OAuth authentication
+        if (data.requiresAuth && data.authUrl) {
+          // Redirect to OAuth flow
+          window.location.href = data.authUrl;
+          return;
+        }
+
         toast({
           title: "Success",
           description: "App installed successfully!",

@@ -55,6 +55,24 @@ export async function POST(request: NextRequest) {
     const userId = providedUserId || "glr5k48b47k5ybhqav0v3nit"; // test@example.com user
 
     const installation = await AppRegistry.installApp(appId, userId);
+
+    // If the app has OAuth authentication, initiate the OAuth flow
+    const app = await AppRegistry.getAppById(appId);
+    if (app?.authentication?.type === 'oauth2') {
+      // Build OAuth URL with installation details
+      const authUrl = new URL(`${app.homepage}/api/auth/connect`);
+      authUrl.searchParams.set('installation_id', installation.id);
+      authUrl.searchParams.set('platform_url', process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000');
+      authUrl.searchParams.set('embed_mode', String(installation.settings?.embedMode || true));
+      authUrl.searchParams.set('user_id', userId);
+
+      return NextResponse.json({
+        installation,
+        requiresAuth: true,
+        authUrl: authUrl.toString()
+      });
+    }
+
     return NextResponse.json({ installation });
   } catch (error: unknown) {
     console.error("Error installing app:", error);
