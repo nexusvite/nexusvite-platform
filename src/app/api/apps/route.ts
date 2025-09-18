@@ -9,8 +9,8 @@ export async function GET(request: NextRequest) {
   const search = searchParams.get("search");
 
   try {
-    // For demo, use a mock user ID
-    const userId = "user_1";
+    // TODO: Get actual user ID from session
+    const userId = "glr5k48b47k5ybhqav0v3nit"; // test@example.com user
 
     if (installed === "true") {
       // Get user's installed apps
@@ -51,11 +51,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Use provided userId or default for demo
-    const userId = providedUserId || "user_1";
-    const organizationId = "org_1";
+    // Use provided userId or default
+    const userId = providedUserId || "glr5k48b47k5ybhqav0v3nit"; // test@example.com user
 
-    const installation = await AppRegistry.installApp(appId, userId, organizationId);
+    const installation = await AppRegistry.installApp(appId, userId);
     return NextResponse.json({ installation });
   } catch (error: unknown) {
     console.error("Error installing app:", error);
