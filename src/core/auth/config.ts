@@ -50,6 +50,46 @@ export const auth = betterAuth({
   trustedOrigins: config.isDevelopment
     ? ["http://localhost:3000"]
     : [config.app.url],
+
+  onRequest: async ({ request, headers, context }) => {
+    return {
+      request,
+      headers,
+      context,
+    };
+  },
+
+  onResponse: async ({ response, request, context }) => {
+    // Broadcast auth events via WebSocket
+    if (response.status === 200) {
+      const url = new URL(request.url);
+      const pathname = url.pathname;
+
+      // Handle login/signup success
+      if (pathname.includes("/sign-in") || pathname.includes("/sign-up")) {
+        const io = (global as any).io;
+        if (io && context?.user) {
+          io.to(`user:${context.user.id}`).emit("auth:login", {
+            userId: context.user.id,
+            timestamp: Date.now(),
+          });
+        }
+      }
+
+      // Handle logout
+      if (pathname.includes("/sign-out")) {
+        const io = (global as any).io;
+        if (io && context?.user) {
+          io.to(`user:${context.user.id}`).emit("auth:logout", {
+            userId: context.user.id,
+            timestamp: Date.now(),
+          });
+        }
+      }
+    }
+
+    return response;
+  },
 });
 
 export type Session = typeof auth.$Infer.Session;

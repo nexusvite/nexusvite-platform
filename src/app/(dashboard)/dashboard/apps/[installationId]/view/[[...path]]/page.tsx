@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, ExternalLink, AlertCircle, RefreshCw, Settings, ArrowLeft } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Link from "next/link";
+import { useSession } from "@/lib/auth-client";
 
 interface InstalledApp {
   id: string;
@@ -42,6 +43,7 @@ interface PageProps {
 export default function AppEmbeddedView({ params }: PageProps) {
   const resolvedParams = use(params);
   const router = useRouter();
+  const { data: session } = useSession();
   const [app, setApp] = useState<InstalledApp | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -115,9 +117,29 @@ export default function AppEmbeddedView({ params }: PageProps) {
     );
   }
 
-  // Build the iframe URL with the path
+  // Build the iframe URL with the path and authentication parameters
   const appPath = resolvedParams.path ? `/${resolvedParams.path.join('/')}` : '';
-  const iframeSrc = `${app.manifest.homepage}${appPath}`;
+
+  // Add authentication parameters for embedded mode
+  // These will help the app authenticate automatically
+  const iframeUrl = new URL(`${app.manifest.homepage}${appPath}`);
+  iframeUrl.searchParams.set('installation_id', resolvedParams.installationId);
+  iframeUrl.searchParams.set('platform_url', window.location.origin);
+  iframeUrl.searchParams.set('embed_mode', 'true');
+
+  // Pass user information for authentication
+  if (session?.user) {
+    iframeUrl.searchParams.set('user_id', session.user.id);
+    // Generate a session token for the app
+    iframeUrl.searchParams.set('session_token', `embed_${session.user.id}_${resolvedParams.installationId}_${Date.now()}`);
+    // Pass the access token from the session
+    iframeUrl.searchParams.set('access_token', session.session?.token || `token_${Date.now()}`);
+  } else {
+    // Fallback if no session (shouldn't happen in dashboard)
+    iframeUrl.searchParams.set('session_token', `embed_${resolvedParams.installationId}_${Date.now()}`);
+  }
+
+  const iframeSrc = iframeUrl.toString();
 
   // Get the current navigation item title
   const currentNavItem = app.manifest.navigation?.find(item => {

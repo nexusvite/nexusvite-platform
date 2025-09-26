@@ -1,25 +1,44 @@
 "use client";
 
-import { useState, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useState, Suspense, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CheckCircle, Shield, AlertCircle } from "lucide-react";
+import { useSession } from "@/lib/auth-client";
 
 function AuthorizeContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const { data: session, isPending } = useSession();
 
-  // For demo, we'll assume user is logged in
-  const user = { id: "user_1", email: "admin@nexusvite.com", name: "Admin User" };
-
-  // Get OAuth parameters
+  // Get OAuth parameters before potential redirect
   const clientId = searchParams.get("client_id") || "com.nexusvite.analytics";
   const redirectUri = searchParams.get("redirect_uri") || "";
   const responseType = searchParams.get("response_type") || "code";
   const scope = searchParams.get("scope") || "";
   const state = searchParams.get("state") || "";
+
+  useEffect(() => {
+    // If not authenticated, redirect to login with return URL
+    if (!isPending && !session) {
+      const returnUrl = `/oauth/authorize?${searchParams.toString()}`;
+      router.push(`/login?redirect=${encodeURIComponent(returnUrl)}`);
+    }
+  }, [session, isPending, searchParams, router]);
+
+  // Show loading while checking session
+  if (isPending || !session) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  const user = session.user;
 
   // Parse scopes
   const scopes = scope.split(" ").filter(Boolean);
@@ -53,7 +72,6 @@ function AuthorizeContent() {
         },
         body: JSON.stringify({
           appId: clientId,
-          userId: user?.id || "user_1",
         }),
       });
 
@@ -73,7 +91,7 @@ function AuthorizeContent() {
       clientId,
       redirectUri,
       scope,
-      userId: user?.id || "user_1",
+      userId: user.id,
       timestamp: Date.now(),
     }));
 
