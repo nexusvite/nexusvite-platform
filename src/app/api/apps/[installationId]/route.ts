@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AppRegistry } from "@/lib/app-registry";
+import { getSession } from "@/core/auth/session";
 
 // GET /api/apps/[installationId] - Get installation details
 export async function GET(
@@ -16,9 +17,16 @@ export async function GET(
       );
     }
 
-    // TODO: Get actual user ID from session
-    const userId = "glr5k48b47k5ybhqav0v3nit"; // test@example.com user
+    // Get user session
+    const session = await getSession(request);
+    if (!session) {
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      );
+    }
 
+    const userId = session.user.id;
     const installation = await AppRegistry.getInstallation(installationId, userId);
 
     if (!installation) {
@@ -53,8 +61,16 @@ export async function DELETE(
       );
     }
 
-    // TODO: Get actual user ID from session
-    const userId = "glr5k48b47k5ybhqav0v3nit"; // test@example.com user
+    // Get user session
+    const session = await getSession(request);
+    if (!session) {
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      );
+    }
+
+    const userId = session.user.id;
 
     // Uninstall the app (this will also send webhook)
     await AppRegistry.uninstallApp(installationId, userId);

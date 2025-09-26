@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AppRegistry } from "@/lib/app-registry";
+import { auth } from "@/core/auth/config";
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,10 +13,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // For demo, extract user info from token (in production, verify JWT)
-    // Simple token format: "access_user_{userId}_{timestamp}"
-    const tokenParts = accessToken.split("_");
-    const userId = tokenParts[2] || "user_1";
+    // Verify the access token with better-auth
+    // The accessToken should be a valid session token from the platform
+    let session;
+    try {
+      // Verify session using the provided access token
+      session = await auth.api.getSession({
+        headers: {
+          authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      if (!session) {
+        return NextResponse.json(
+          { error: "Invalid or expired access token" },
+          { status: 401 }
+        );
+      }
+    } catch (error) {
+      console.error("Token verification failed:", error);
+      return NextResponse.json(
+        { error: "Invalid access token" },
+        { status: 401 }
+      );
+    }
+
+    const userId = session.user.id;
 
     // Check if app is installed for this user
     const installedApps = await AppRegistry.getInstalledApps(userId);
@@ -25,6 +48,11 @@ export async function POST(request: NextRequest) {
       installed: isInstalled,
       userId,
       appId,
+      user: {
+        id: session.user.id,
+        email: session.user.email,
+        name: session.user.name,
+      }
     });
   } catch (error) {
     console.error("Error verifying app installation:", error);
