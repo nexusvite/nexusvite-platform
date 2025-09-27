@@ -6,6 +6,8 @@ export * from './installations';
 export * from './oauth-providers';
 export * from './api-routes';
 export * from './api-logs';
+export * from './teams';
+export * from './better-auth';
 
 // Re-export relations
 export * from './relations';
