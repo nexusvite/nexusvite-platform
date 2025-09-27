@@ -250,6 +250,7 @@ function WorkflowCanvasContent({
         {selectedNode && (
           <NodeToolbar
             node={selectedNode}
+            availableNodes={nodes.filter(n => n.id !== selectedNode.id)}
             onClose={() => setSelectedNode(null)}
             onUpdate={(updatedNode) => {
               setNodes((nds) =>
