@@ -31,7 +31,10 @@ interface ExpressionEditorProps {
     label: string;
     outputs?: Record<string, any>;
   }>;
+  executionOutputs?: Record<string, any>;
+  executionVariables?: Record<string, any>;
   className?: string;
+  onRegister?: (handler: (value: string) => void) => void;
 }
 
 export function ExpressionEditor({
@@ -39,7 +42,10 @@ export function ExpressionEditor({
   onChange,
   placeholder = 'Enter value or expression...',
   availableNodes = [],
+  executionOutputs = {},
+  executionVariables = {},
   className = '',
+  onRegister,
 }: ExpressionEditorProps) {
   const [isExpression, setIsExpression] = useState(value.startsWith('{{') && value.endsWith('}}'));
   const [localValue, setLocalValue] = useState(value);
@@ -51,6 +57,15 @@ export function ExpressionEditor({
     setLocalValue(value);
     setIsExpression(value.startsWith('{{') && value.endsWith('}}'));
   }, [value]);
+
+  useEffect(() => {
+    // Register the insert handler
+    if (onRegister) {
+      onRegister((expression: string) => {
+        insertExpression(expression);
+      });
+    }
+  }, [onRegister]);
 
   const handleToggleExpression = () => {
     if (isExpression) {
@@ -101,11 +116,49 @@ export function ExpressionEditor({
     setShowHelper(false);
   };
 
+  const renderDataFields = (data: any, nodeId: string, path: string, depth = 0): JSX.Element[] => {
+    if (depth > 2 || !data || typeof data !== 'object') return [];
+
+    const fields: JSX.Element[] = [];
+
+    Object.entries(data).forEach(([key, value]) => {
+      const fullPath = path ? `${path}.${key}` : key;
+      const expression = `$node["${nodeId}"].json.${fullPath}`;
+
+      fields.push(
+        <button
+          key={fullPath}
+          className="w-full text-left px-2 py-1 text-xs hover:bg-muted rounded flex items-center justify-between group"
+          onClick={() => insertExpression(expression)}
+        >
+          <span className="flex items-center gap-1">
+            <ChevronRight className="h-3 w-3" />
+            <code>{fullPath}</code>
+          </span>
+          <span className="text-muted-foreground group-hover:text-foreground text-right truncate max-w-[100px]">
+            {typeof value === 'object' ? '{...}' : String(value).substring(0, 20)}
+          </span>
+        </button>
+      );
+
+      if (typeof value === 'object' && value !== null) {
+        fields.push(...renderDataFields(value, nodeId, fullPath, depth + 1));
+      }
+    });
+
+    return fields;
+  };
+
   const commonExpressions = [
     { label: 'Current Date', expression: 'new Date().toISOString()', icon: Calendar },
     { label: 'Timestamp', expression: 'Date.now()', icon: Clock },
     { label: 'Random Number', expression: 'Math.random()', icon: Hash },
     { label: 'UUID', expression: "crypto.randomUUID()", icon: Variable },
+    ...Object.entries(executionVariables).map(([name, value]) => ({
+      label: `Variable: ${name}`,
+      expression: `$vars.${name}`,
+      icon: Variable,
+    })),
   ];
 
   return (
@@ -145,13 +198,43 @@ export function ExpressionEditor({
 
                   <TabsContent value="nodes" className="mt-4">
                     <ScrollArea className="h-64">
-                      {availableNodes.length === 0 ? (
+                      {availableNodes.length === 0 && Object.keys(executionOutputs).length === 0 ? (
                         <p className="text-sm text-muted-foreground">
-                          No previous nodes available
+                          No nodes available. Run the workflow to see outputs.
                         </p>
                       ) : (
                         <div className="space-y-2">
-                          {availableNodes.map((node) => (
+                          {/* Show execution outputs if available */}
+                          {Object.entries(executionOutputs).map(([nodeId, output]: [string, any]) => {
+                            const node = availableNodes.find(n => n.id === nodeId);
+                            const nodeLabel = node?.label || nodeId;
+
+                            if (!output?.data) return null;
+
+                            return (
+                              <div key={nodeId} className="border rounded-lg p-2">
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="text-sm font-medium">{nodeLabel}</span>
+                                  <div className="flex gap-1">
+                                    {output.status === 'success' && (
+                                      <Badge variant="default" className="text-xs">
+                                        ✓
+                                      </Badge>
+                                    )}
+                                    <Badge variant="outline" className="text-xs">
+                                      {nodeId}
+                                    </Badge>
+                                  </div>
+                                </div>
+                                <div className="space-y-1">
+                                  {renderDataFields(output.data, nodeId, '')}
+                                </div>
+                              </div>
+                            );
+                          })}
+
+                          {/* Show node configurations if no execution */}
+                          {Object.keys(executionOutputs).length === 0 && availableNodes.map((node) => (
                             <div key={node.id} className="border rounded-lg p-2">
                               <div className="flex items-center justify-between mb-2">
                                 <span className="text-sm font-medium">{node.label}</span>
@@ -159,27 +242,7 @@ export function ExpressionEditor({
                                   {node.id}
                                 </Badge>
                               </div>
-                              {node.outputs && Object.keys(node.outputs).length > 0 ? (
-                                <div className="space-y-1">
-                                  {Object.entries(node.outputs).map(([key, value]) => (
-                                    <button
-                                      key={key}
-                                      className="w-full text-left px-2 py-1 text-xs hover:bg-muted rounded flex items-center justify-between group"
-                                      onClick={() => insertExpression(`$node["${node.id}"].json.${key}`)}
-                                    >
-                                      <span className="flex items-center gap-1">
-                                        <ChevronRight className="h-3 w-3" />
-                                        <code>{key}</code>
-                                      </span>
-                                      <span className="text-muted-foreground group-hover:text-foreground">
-                                        {typeof value === 'object' ? 'Object' : String(value).substring(0, 20)}
-                                      </span>
-                                    </button>
-                                  ))}
-                                </div>
-                              ) : (
-                                <p className="text-xs text-muted-foreground">No outputs yet</p>
-                              )}
+                              <p className="text-xs text-muted-foreground">Run workflow to see outputs</p>
                             </div>
                           ))}
                         </div>
