@@ -7,8 +7,9 @@ import { auth } from '@/core/auth/config';
 // GET - Get a single workflow
 export async function GET(
   request: NextRequest,
-  { params }: { params: { workflowId: string } }
+  { params }: { params: Promise<{ workflowId: string }> }
 ) {
+  const { workflowId } = await params;
   try {
     const session = await auth.api.getSession({
       headers: request.headers,
@@ -23,7 +24,7 @@ export async function GET(
       .from(workflows)
       .where(
         and(
-          eq(workflows.id, params.workflowId),
+          eq(workflows.id, workflowId),
           eq(workflows.userId, session.user.id)
         )
       );
@@ -48,8 +49,9 @@ export async function GET(
 // PATCH - Update a workflow
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { workflowId: string } }
+  { params }: { params: Promise<{ workflowId: string }> }
 ) {
+  const { workflowId } = await params;
   try {
     const session = await auth.api.getSession({
       headers: request.headers,
@@ -77,7 +79,7 @@ export async function PATCH(
       .set(updateData)
       .where(
         and(
-          eq(workflows.id, params.workflowId),
+          eq(workflows.id, workflowId),
           eq(workflows.userId, session.user.id)
         )
       )
@@ -95,16 +97,16 @@ export async function PATCH(
       // Delete existing nodes and connections
       await db
         .delete(workflowNodes)
-        .where(eq(workflowNodes.workflowId, params.workflowId));
+        .where(eq(workflowNodes.workflowId, workflowId));
 
       await db
         .delete(workflowConnections)
-        .where(eq(workflowConnections.workflowId, params.workflowId));
+        .where(eq(workflowConnections.workflowId, workflowId));
 
       // Insert new nodes if they exist
       if (data.canvasState.nodes && data.canvasState.nodes.length > 0) {
         const nodesToInsert = data.canvasState.nodes.map((node: any) => ({
-          workflowId: params.workflowId,
+          workflowId: workflowId,
           nodeId: node.id,
           type: node.type,
           subType: node.data?.subType || node.type,
@@ -122,7 +124,7 @@ export async function PATCH(
       // Insert new connections if they exist
       if (data.canvasState.edges && data.canvasState.edges.length > 0) {
         const connectionsToInsert = data.canvasState.edges.map((edge: any) => ({
-          workflowId: params.workflowId,
+          workflowId: workflowId,
           connectionId: edge.id,
           sourceNodeId: edge.source,
           targetNodeId: edge.target,
@@ -148,8 +150,9 @@ export async function PATCH(
 // DELETE - Delete a workflow
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { workflowId: string } }
+  { params }: { params: Promise<{ workflowId: string }> }
 ) {
+  const { workflowId } = await params;
   try {
     const session = await auth.api.getSession({
       headers: request.headers,
@@ -163,7 +166,7 @@ export async function DELETE(
       .delete(workflows)
       .where(
         and(
-          eq(workflows.id, params.workflowId),
+          eq(workflows.id, workflowId),
           eq(workflows.userId, session.user.id)
         )
       )

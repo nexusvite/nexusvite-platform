@@ -14,6 +14,7 @@ import ReactFlow, {
   useReactFlow,
   ReactFlowProvider,
   BackgroundVariant,
+  MarkerType,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { Button } from '@/components/ui/button';
@@ -52,7 +53,21 @@ function WorkflowCanvasContent({
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
 
   const onConnect = useCallback(
-    (params: Edge | Connection) => setEdges((eds) => addEdge(params, eds)),
+    (params: Edge | Connection) => {
+      const edge = {
+        ...params,
+        type: 'smoothstep',
+        animated: true,
+        style: { stroke: '#64748b', strokeWidth: 1.5 },
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+          width: 15,
+          height: 15,
+          color: '#64748b',
+        },
+      };
+      setEdges((eds) => addEdge(edge, eds));
+    },
     [setEdges]
   );
 
@@ -83,12 +98,19 @@ function WorkflowCanvasContent({
         y: event.clientY - reactFlowBounds.top,
       });
 
+      const subType = event.dataTransfer.getData('subType');
+      const label = event.dataTransfer.getData('label');
+      const description = event.dataTransfer.getData('description');
+
       const newNode: Node = {
-        id: `${type}_${Date.now()}`,
+        id: `${subType || type}_${Date.now()}`,
         type,
         position,
         data: {
-          label: `${type.charAt(0).toUpperCase() + type.slice(1)} Node`,
+          label: label || `${type.charAt(0).toUpperCase() + type.slice(1)} Node`,
+          description: description || '',
+          type: type,
+          subType: subType || null,
           config: {},
         },
       };
@@ -201,6 +223,22 @@ function WorkflowCanvasContent({
           onDragOver={onDragOver}
           onDrop={onDrop}
           nodeTypes={nodeTypes}
+          defaultEdgeOptions={{
+            type: 'smoothstep',
+            animated: true,
+            style: { stroke: '#64748b', strokeWidth: 1.5 },
+            markerEnd: {
+              type: MarkerType.ArrowClosed,
+              width: 15,
+              height: 15,
+              color: '#64748b',
+            },
+          }}
+          connectionLineType="smoothstep"
+          connectionLineStyle={{
+            stroke: '#64748b',
+            strokeWidth: 1.5,
+          }}
           fitView
           className="bg-background"
         >
@@ -219,6 +257,11 @@ function WorkflowCanvasContent({
                   node.id === updatedNode.id ? updatedNode : node
                 )
               );
+            }}
+            onDelete={(nodeId) => {
+              setNodes((nds) => nds.filter((node) => node.id !== nodeId));
+              setEdges((eds) => eds.filter((edge) => edge.source !== nodeId && edge.target !== nodeId));
+              setSelectedNode(null);
             }}
           />
         )}

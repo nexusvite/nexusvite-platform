@@ -7,8 +7,9 @@ import { auth } from '@/core/auth/config';
 // POST - Execute a workflow
 export async function POST(
   request: NextRequest,
-  { params }: { params: { workflowId: string } }
+  { params }: { params: Promise<{ workflowId: string }> }
 ) {
+  const { workflowId } = await params;
   try {
     const session = await auth.api.getSession({
       headers: request.headers,
@@ -24,7 +25,7 @@ export async function POST(
       .from(workflows)
       .where(
         and(
-          eq(workflows.id, params.workflowId),
+          eq(workflows.id, workflowId),
           eq(workflows.userId, session.user.id)
         )
       );
@@ -51,7 +52,7 @@ export async function POST(
     const [execution] = await db
       .insert(workflowExecutions)
       .values({
-        workflowId: params.workflowId,
+        workflowId: workflowId,
         status: 'pending',
         triggerData,
         startedAt: new Date(),
@@ -59,7 +60,7 @@ export async function POST(
       .returning();
 
     // Start async execution (in a real implementation, this would be handled by a queue)
-    executeWorkflowAsync(params.workflowId, execution.id, workflow, session.user.id);
+    executeWorkflowAsync(workflowId, execution.id, workflow, session.user.id);
 
     return NextResponse.json({
       executionId: execution.id,

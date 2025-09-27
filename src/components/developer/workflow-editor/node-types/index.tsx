@@ -60,16 +60,16 @@ const BaseNode = memo(
     const colorClass = nodeColors[type as keyof typeof nodeColors] || '';
 
     return (
-      <Card className={`min-w-[200px] p-4 ${colorClass} border-2`}>
-        <div className="flex items-center justify-between mb-2">
-          <Icon className="h-5 w-5" />
-          <Badge variant="secondary" className="text-xs">
+      <Card className={`min-w-[150px] p-3 ${colorClass} border-2`}>
+        <div className="flex items-center justify-between mb-1.5">
+          <Icon className="h-4 w-4" />
+          <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 h-auto">
             {type}
           </Badge>
         </div>
-        <div className="font-medium text-sm">{data.label}</div>
+        <div className="font-medium text-xs">{data.label}</div>
         {data.status && (
-          <div className="mt-2">
+          <div className="mt-1.5">
             <Badge
               variant={
                 data.status === 'success'
@@ -80,7 +80,7 @@ const BaseNode = memo(
                   ? 'secondary'
                   : 'outline'
               }
-              className="text-xs"
+              className="text-[10px] px-1.5 py-0.5 h-auto"
             >
               {data.status}
             </Badge>
@@ -101,8 +101,15 @@ export const TriggerNode = memo(({ data, isConnectable }: NodeProps<BaseNodeData
       <Handle
         type="source"
         position={Position.Bottom}
-        id="output"
-        style={{ background: '#16a34a' }}
+        id="output-bottom"
+        style={{ background: '#16a34a', width: 8, height: 8 }}
+        isConnectable={isConnectable}
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="output-right"
+        style={{ background: '#16a34a', width: 8, height: 8 }}
         isConnectable={isConnectable}
       />
     </>
@@ -118,16 +125,30 @@ export const ActionNode = memo(({ data, isConnectable }: NodeProps<BaseNodeData>
       <Handle
         type="target"
         position={Position.Top}
-        id="input"
-        style={{ background: '#3b82f6' }}
+        id="input-top"
+        style={{ background: '#3b82f6', width: 8, height: 8 }}
+        isConnectable={isConnectable}
+      />
+      <Handle
+        type="target"
+        position={Position.Left}
+        id="input-left"
+        style={{ background: '#3b82f6', width: 8, height: 8 }}
         isConnectable={isConnectable}
       />
       <BaseNode data={data} type="action" isConnectable={isConnectable} />
       <Handle
         type="source"
         position={Position.Bottom}
-        id="output"
-        style={{ background: '#3b82f6' }}
+        id="output-bottom"
+        style={{ background: '#3b82f6', width: 8, height: 8 }}
+        isConnectable={isConnectable}
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="output-right"
+        style={{ background: '#3b82f6', width: 8, height: 8 }}
         isConnectable={isConnectable}
       />
     </>
@@ -145,8 +166,15 @@ export const LogicNode = memo(({ data, isConnectable }: NodeProps<BaseNodeData>)
       <Handle
         type="target"
         position={Position.Top}
-        id="input"
-        style={{ background: '#f97316' }}
+        id="input-top"
+        style={{ background: '#f97316', width: 8, height: 8 }}
+        isConnectable={isConnectable}
+      />
+      <Handle
+        type="target"
+        position={Position.Left}
+        id="input-left"
+        style={{ background: '#f97316', width: 8, height: 8 }}
         isConnectable={isConnectable}
       />
       <BaseNode data={data} type="logic" isConnectable={isConnectable} />
@@ -155,26 +183,49 @@ export const LogicNode = memo(({ data, isConnectable }: NodeProps<BaseNodeData>)
           <Handle
             type="source"
             position={Position.Bottom}
-            id="true"
-            style={{ background: '#16a34a', left: '30%' }}
+            id="true-bottom"
+            style={{ background: '#16a34a', left: '30%', width: 8, height: 8 }}
             isConnectable={isConnectable}
           />
           <Handle
             type="source"
             position={Position.Bottom}
-            id="false"
-            style={{ background: '#dc2626', left: '70%' }}
+            id="false-bottom"
+            style={{ background: '#dc2626', left: '70%', width: 8, height: 8 }}
+            isConnectable={isConnectable}
+          />
+          <Handle
+            type="source"
+            position={Position.Right}
+            id="true-right"
+            style={{ background: '#16a34a', top: '30%', width: 8, height: 8 }}
+            isConnectable={isConnectable}
+          />
+          <Handle
+            type="source"
+            position={Position.Right}
+            id="false-right"
+            style={{ background: '#dc2626', top: '70%', width: 8, height: 8 }}
             isConnectable={isConnectable}
           />
         </>
       ) : (
-        <Handle
-          type="source"
-          position={Position.Bottom}
-          id="output"
-          style={{ background: '#f97316' }}
-          isConnectable={isConnectable}
-        />
+        <>
+          <Handle
+            type="source"
+            position={Position.Bottom}
+            id="output-bottom"
+            style={{ background: '#f97316', width: 8, height: 8 }}
+            isConnectable={isConnectable}
+          />
+          <Handle
+            type="source"
+            position={Position.Right}
+            id="output-right"
+            style={{ background: '#f97316', width: 8, height: 8 }}
+            isConnectable={isConnectable}
+          />
+        </>
       )}
     </>
   );
@@ -189,16 +240,30 @@ export const TransformNode = memo(({ data, isConnectable }: NodeProps<BaseNodeDa
       <Handle
         type="target"
         position={Position.Top}
-        id="input"
-        style={{ background: '#9333ea' }}
+        id="input-top"
+        style={{ background: '#9333ea', width: 8, height: 8 }}
+        isConnectable={isConnectable}
+      />
+      <Handle
+        type="target"
+        position={Position.Left}
+        id="input-left"
+        style={{ background: '#9333ea', width: 8, height: 8 }}
         isConnectable={isConnectable}
       />
       <BaseNode data={data} type="transform" isConnectable={isConnectable} />
       <Handle
         type="source"
         position={Position.Bottom}
-        id="output"
-        style={{ background: '#9333ea' }}
+        id="output-bottom"
+        style={{ background: '#9333ea', width: 8, height: 8 }}
+        isConnectable={isConnectable}
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="output-right"
+        style={{ background: '#9333ea', width: 8, height: 8 }}
         isConnectable={isConnectable}
       />
     </>
