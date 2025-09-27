@@ -22,6 +22,7 @@ import {
   ChevronRight,
   ChevronDown,
   Puzzle,
+  Code2,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -39,6 +40,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Activity,
   FileText,
   Puzzle,
+  Code2,
 };
 
 const sidebarItems = [
@@ -67,6 +69,12 @@ const sidebarItems = [
     title: "Team",
     href: "/dashboard/team",
     icon: Users,
+  },
+  {
+    title: "Developer Portal",
+    href: "/developer",
+    icon: Code2,
+    badge: "New",
   },
   {
     title: "Billing",
