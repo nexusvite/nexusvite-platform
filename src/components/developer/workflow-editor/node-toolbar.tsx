@@ -24,7 +24,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Save, Trash2 } from 'lucide-react';
+import { Save, Trash2, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   AlertDialog,
@@ -37,15 +37,19 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { ExpressionEditor } from './expression-editor';
+import { CredentialSelector } from './credential-selector';
+import { Separator } from '@/components/ui/separator';
 
 interface NodeToolbarProps {
   node: Node;
   onClose: () => void;
   onUpdate: (node: Node) => void;
   onDelete?: (nodeId: string) => void;
+  availableNodes?: Node[];
 }
 
-export function NodeToolbar({ node, onClose, onUpdate, onDelete }: NodeToolbarProps) {
+export function NodeToolbar({ node, onClose, onUpdate, onDelete, availableNodes = [] }: NodeToolbarProps) {
   const [nodeData, setNodeData] = useState(node.data);
   const [config, setConfig] = useState(node.data.config || {});
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -167,13 +171,18 @@ export function NodeToolbar({ node, onClose, onUpdate, onDelete }: NodeToolbarPr
           <>
             <div className="space-y-2">
               <Label htmlFor="url">URL</Label>
-              <Input
-                id="url"
+              <ExpressionEditor
                 value={config.url || ''}
-                onChange={(e) => setConfig({ ...config, url: e.target.value })}
+                onChange={(value) => setConfig({ ...config, url: value })}
                 placeholder="https://api.example.com/endpoint"
+                availableNodes={availableNodes.map(n => ({
+                  id: n.id,
+                  label: n.data.label || n.id,
+                  outputs: n.data.outputs || {}
+                }))}
               />
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="httpMethod">Method</Label>
               <Select
@@ -189,33 +198,183 @@ export function NodeToolbar({ node, onClose, onUpdate, onDelete }: NodeToolbarPr
                   <SelectItem value="PUT">PUT</SelectItem>
                   <SelectItem value="DELETE">DELETE</SelectItem>
                   <SelectItem value="PATCH">PATCH</SelectItem>
+                  <SelectItem value="HEAD">HEAD</SelectItem>
+                  <SelectItem value="OPTIONS">OPTIONS</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+
+            <Separator className="my-4" />
+
+            <div className="space-y-2">
+              <Label>Authentication</Label>
+              <Select
+                value={config.authType || 'none'}
+                onValueChange={(value) => setConfig({ ...config, authType: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  <SelectItem value="basic">Basic Auth</SelectItem>
+                  <SelectItem value="bearer">Bearer Token</SelectItem>
+                  <SelectItem value="apikey">API Key</SelectItem>
+                  <SelectItem value="oauth2">OAuth 2.0</SelectItem>
+                  <SelectItem value="credential">Use Credential</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {config.authType === 'basic' && (
+              <>
+                <div className="space-y-2">
+                  <Label>Username</Label>
+                  <ExpressionEditor
+                    value={config.authUsername || ''}
+                    onChange={(value) => setConfig({ ...config, authUsername: value })}
+                    placeholder="username"
+                    availableNodes={availableNodes.map(n => ({
+                      id: n.id,
+                      label: n.data.label || n.id,
+                      outputs: n.data.outputs || {}
+                    }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Password</Label>
+                  <ExpressionEditor
+                    value={config.authPassword || ''}
+                    onChange={(value) => setConfig({ ...config, authPassword: value })}
+                    placeholder="password"
+                    availableNodes={availableNodes.map(n => ({
+                      id: n.id,
+                      label: n.data.label || n.id,
+                      outputs: n.data.outputs || {}
+                    }))}
+                  />
+                </div>
+              </>
+            )}
+
+            {config.authType === 'bearer' && (
+              <div className="space-y-2">
+                <Label>Token</Label>
+                <ExpressionEditor
+                  value={config.authToken || ''}
+                  onChange={(value) => setConfig({ ...config, authToken: value })}
+                  placeholder="Bearer token"
+                  availableNodes={availableNodes.map(n => ({
+                    id: n.id,
+                    label: n.data.label || n.id,
+                    outputs: n.data.outputs || {}
+                  }))}
+                />
+              </div>
+            )}
+
+            {config.authType === 'apikey' && (
+              <>
+                <div className="space-y-2">
+                  <Label>Header Name</Label>
+                  <Input
+                    value={config.apiKeyHeader || 'X-API-Key'}
+                    onChange={(e) => setConfig({ ...config, apiKeyHeader: e.target.value })}
+                    placeholder="X-API-Key"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>API Key</Label>
+                  <ExpressionEditor
+                    value={config.apiKey || ''}
+                    onChange={(value) => setConfig({ ...config, apiKey: value })}
+                    placeholder="Your API key"
+                    availableNodes={availableNodes.map(n => ({
+                      id: n.id,
+                      label: n.data.label || n.id,
+                      outputs: n.data.outputs || {}
+                    }))}
+                  />
+                </div>
+              </>
+            )}
+
+            {config.authType === 'credential' && (
+              <CredentialSelector
+                type="http_auth"
+                value={config.credentialId}
+                onChange={(credId, inlineConfig) => {
+                  setConfig({
+                    ...config,
+                    credentialId: credId,
+                    authConfig: inlineConfig,
+                  });
+                }}
+                allowInline={true}
+              />
+            )}
+
+            <Separator className="my-4" />
+
             <div className="space-y-2">
               <Label htmlFor="headers">Headers (JSON)</Label>
-              <Textarea
-                id="headers"
-                value={JSON.stringify(config.headers || {}, null, 2)}
-                onChange={(e) => {
+              <ExpressionEditor
+                value={config.headers ? JSON.stringify(config.headers, null, 2) : ''}
+                onChange={(value) => {
                   try {
-                    const headers = JSON.parse(e.target.value);
+                    const headers = value ? JSON.parse(value) : {};
                     setConfig({ ...config, headers });
                   } catch {}
                 }}
-                placeholder='{"Content-Type": "application/json"}'
-                className="font-mono text-xs"
+                placeholder='{\n  "Content-Type": "application/json"\n}'
+                availableNodes={availableNodes.map(n => ({
+                  id: n.id,
+                  label: n.data.label || n.id,
+                  outputs: n.data.outputs || {}
+                }))}
               />
             </div>
+
+            {['POST', 'PUT', 'PATCH'].includes(config.method) && (
+              <div className="space-y-2">
+                <Label htmlFor="body">Request Body</Label>
+                <ExpressionEditor
+                  value={config.body || ''}
+                  onChange={(value) => setConfig({ ...config, body: value })}
+                  placeholder='{\n  "key": "value"\n}'
+                  availableNodes={availableNodes.map(n => ({
+                    id: n.id,
+                    label: n.data.label || n.id,
+                    outputs: n.data.outputs || {}
+                  }))}
+                />
+              </div>
+            )}
+
             <div className="space-y-2">
-              <Label htmlFor="body">Request Body (JSON)</Label>
-              <Textarea
-                id="body"
-                value={config.body || ''}
-                onChange={(e) => setConfig({ ...config, body: e.target.value })}
-                placeholder='{"key": "value"}'
-                className="font-mono text-xs"
+              <Label>Response Format</Label>
+              <Select
+                value={config.responseFormat || 'json'}
+                onValueChange={(value) => setConfig({ ...config, responseFormat: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="json">JSON</SelectItem>
+                  <SelectItem value="text">Text</SelectItem>
+                  <SelectItem value="binary">Binary</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="ignoreSSL"
+                checked={config.ignoreSSL === true}
+                onCheckedChange={(checked) => setConfig({ ...config, ignoreSSL: checked })}
               />
+              <Label htmlFor="ignoreSSL">Ignore SSL Issues</Label>
             </div>
           </>
         );
@@ -223,6 +382,39 @@ export function NodeToolbar({ node, onClose, onUpdate, onDelete }: NodeToolbarPr
       case 'database':
         return (
           <>
+            <div className="space-y-2">
+              <Label>Database Type</Label>
+              <Select
+                value={config.dbType || 'postgresql'}
+                onValueChange={(value) => setConfig({ ...config, dbType: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="postgresql">PostgreSQL</SelectItem>
+                  <SelectItem value="mysql">MySQL</SelectItem>
+                  <SelectItem value="mongodb">MongoDB</SelectItem>
+                  <SelectItem value="sqlite">SQLite</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <CredentialSelector
+              type={config.dbType as any || 'postgresql'}
+              value={config.credentialId}
+              onChange={(credId, inlineConfig) => {
+                setConfig({
+                  ...config,
+                  credentialId: credId,
+                  dbConfig: inlineConfig,
+                });
+              }}
+              allowInline={true}
+            />
+
+            <Separator className="my-4" />
+
             <div className="space-y-2">
               <Label htmlFor="operation">Operation</Label>
               <Select
@@ -237,65 +429,163 @@ export function NodeToolbar({ node, onClose, onUpdate, onDelete }: NodeToolbarPr
                   <SelectItem value="insert">Insert</SelectItem>
                   <SelectItem value="update">Update</SelectItem>
                   <SelectItem value="delete">Delete</SelectItem>
+                  <SelectItem value="custom">Custom Query</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="table">Table Name</Label>
-              <Input
-                id="table"
-                value={config.table || ''}
-                onChange={(e) => setConfig({ ...config, table: e.target.value })}
-                placeholder="users"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="query">Query/Filter (JSON)</Label>
-              <Textarea
-                id="query"
-                value={JSON.stringify(config.query || {}, null, 2)}
-                onChange={(e) => {
-                  try {
-                    const query = JSON.parse(e.target.value);
-                    setConfig({ ...config, query });
-                  } catch {}
-                }}
-                placeholder='{"status": "active"}'
-                className="font-mono text-xs"
-              />
-            </div>
+
+            {config.operation === 'custom' ? (
+              <div className="space-y-2">
+                <Label htmlFor="customQuery">SQL Query</Label>
+                <Textarea
+                  id="customQuery"
+                  value={config.customQuery || ''}
+                  onChange={(e) => setConfig({ ...config, customQuery: e.target.value })}
+                  placeholder="SELECT * FROM users WHERE status = $1"
+                  className="font-mono text-xs min-h-[100px]"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Use $1, $2, etc. for parameters
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="table">Table Name</Label>
+                  <ExpressionEditor
+                    value={config.table || ''}
+                    onChange={(value) => setConfig({ ...config, table: value })}
+                    placeholder="users"
+                    availableNodes={availableNodes.map(n => ({
+                      id: n.id,
+                      label: n.data.label || n.id,
+                      outputs: n.data.outputs || {}
+                    }))}
+                  />
+                </div>
+
+                {config.operation === 'select' && (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Columns (comma separated, empty for all)</Label>
+                      <Input
+                        value={config.columns || ''}
+                        onChange={(e) => setConfig({ ...config, columns: e.target.value })}
+                        placeholder="id, name, email"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Limit</Label>
+                      <Input
+                        type="number"
+                        value={config.limit || ''}
+                        onChange={(e) => setConfig({ ...config, limit: e.target.value })}
+                        placeholder="100"
+                      />
+                    </div>
+                  </>
+                )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="query">
+                    {config.operation === 'insert' ? 'Data' : 'Where Condition'} (JSON)
+                  </Label>
+                  <ExpressionEditor
+                    value={config.query ? JSON.stringify(config.query, null, 2) : ''}
+                    onChange={(value) => {
+                      try {
+                        const query = value ? JSON.parse(value) : {};
+                        setConfig({ ...config, query });
+                      } catch {}
+                    }}
+                    placeholder={config.operation === 'insert' ? '{"name": "John", "email": "john@example.com"}' : '{"status": "active"}'}
+                    availableNodes={availableNodes.map(n => ({
+                      id: n.id,
+                      label: n.data.label || n.id,
+                      outputs: n.data.outputs || {}
+                    }))}
+                  />
+                </div>
+              </>
+            )}
           </>
         );
 
       case 'email':
         return (
           <>
+            <CredentialSelector
+              type="smtp"
+              value={config.credentialId}
+              onChange={(credId, inlineConfig) => {
+                setConfig({
+                  ...config,
+                  credentialId: credId,
+                  smtpConfig: inlineConfig,
+                });
+              }}
+              allowInline={true}
+            />
+            <Separator className="my-4" />
+            <div className="space-y-2">
+              <Label htmlFor="from">From Email</Label>
+              <ExpressionEditor
+                value={config.from || ''}
+                onChange={(value) => setConfig({ ...config, from: value })}
+                placeholder="sender@example.com"
+                availableNodes={availableNodes.map(n => ({
+                  id: n.id,
+                  label: n.data.label || n.id,
+                  outputs: n.data.outputs || {}
+                }))}
+              />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="to">To Email</Label>
-              <Input
-                id="to"
+              <ExpressionEditor
                 value={config.to || ''}
-                onChange={(e) => setConfig({ ...config, to: e.target.value })}
-                placeholder="user@example.com"
+                onChange={(value) => setConfig({ ...config, to: value })}
+                placeholder="recipient@example.com"
+                availableNodes={availableNodes.map(n => ({
+                  id: n.id,
+                  label: n.data.label || n.id,
+                  outputs: n.data.outputs || {}
+                }))}
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="subject">Subject</Label>
-              <Input
-                id="subject"
+              <ExpressionEditor
                 value={config.subject || ''}
-                onChange={(e) => setConfig({ ...config, subject: e.target.value })}
+                onChange={(value) => setConfig({ ...config, subject: value })}
                 placeholder="Email Subject"
+                availableNodes={availableNodes.map(n => ({
+                  id: n.id,
+                  label: n.data.label || n.id,
+                  outputs: n.data.outputs || {}
+                }))}
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="emailBody">Body</Label>
-              <Textarea
-                id="emailBody"
+              <ExpressionEditor
                 value={config.body || ''}
-                onChange={(e) => setConfig({ ...config, body: e.target.value })}
+                onChange={(value) => setConfig({ ...config, body: value })}
                 placeholder="Email body content..."
+                availableNodes={availableNodes.map(n => ({
+                  id: n.id,
+                  label: n.data.label || n.id,
+                  outputs: n.data.outputs || {}
+                }))}
               />
+            </div>
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="html"
+                checked={config.html !== false}
+                onCheckedChange={(checked) => setConfig({ ...config, html: checked })}
+              />
+              <Label htmlFor="html">Send as HTML</Label>
             </div>
           </>
         );
