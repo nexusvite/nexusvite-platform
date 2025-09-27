@@ -196,9 +196,11 @@ const categoryColors: { [key: string]: string } = {
 };
 
 export function NodePalette() {
-  const onDragStart = (event: React.DragEvent, nodeType: string, subType: string) => {
-    event.dataTransfer.setData('application/reactflow', nodeType);
-    event.dataTransfer.setData('nodeSubType', subType);
+  const onDragStart = (event: React.DragEvent, node: NodeTemplate) => {
+    event.dataTransfer.setData('application/reactflow', node.type);
+    event.dataTransfer.setData('subType', node.subType);
+    event.dataTransfer.setData('label', node.label);
+    event.dataTransfer.setData('description', node.description);
     event.dataTransfer.effectAllowed = 'move';
   };
 
@@ -239,7 +241,7 @@ export function NodePalette() {
                         key={node.id}
                         className="p-3 cursor-move hover:shadow-md transition-shadow"
                         draggable
-                        onDragStart={(e) => onDragStart(e, node.type, node.subType)}
+                        onDragStart={(e) => onDragStart(e, node)}
                       >
                         <div className="flex items-start gap-3">
                           <div className="mt-0.5">

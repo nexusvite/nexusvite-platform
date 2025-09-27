@@ -26,6 +26,17 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Save, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface NodeToolbarProps {
   node: Node;
@@ -37,6 +48,7 @@ interface NodeToolbarProps {
 export function NodeToolbar({ node, onClose, onUpdate, onDelete }: NodeToolbarProps) {
   const [nodeData, setNodeData] = useState(node.data);
   const [config, setConfig] = useState(node.data.config || {});
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const handleSave = () => {
     onUpdate({
@@ -59,9 +71,11 @@ export function NodeToolbar({ node, onClose, onUpdate, onDelete }: NodeToolbarPr
   };
 
   const renderConfigFields = () => {
-    const { subType } = nodeData;
+    const { subType, type } = nodeData;
 
-    switch (subType) {
+    // First check for specific subTypes
+    if (subType) {
+      switch (subType) {
       case 'webhook':
         return (
           <>
@@ -396,18 +410,242 @@ return data;"
           </>
         );
 
-      default:
+        default:
+          break;
+      }
+    }
+
+    // If no specific subType config, use general node type config
+    switch (type || node.type) {
+      case 'trigger':
         return (
-          <div className="text-muted-foreground">
-            No configuration available for this node type.
-          </div>
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="triggerName">Trigger Name</Label>
+              <Input
+                id="triggerName"
+                value={config.name || nodeData.label}
+                onChange={(e) => setConfig({ ...config, name: e.target.value })}
+                placeholder="Enter trigger name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="triggerDescription">Description</Label>
+              <Textarea
+                id="triggerDescription"
+                value={config.description || ''}
+                onChange={(e) => setConfig({ ...config, description: e.target.value })}
+                placeholder="Describe what triggers this workflow"
+              />
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="autoStart">Auto Start</Label>
+                <Switch
+                  id="autoStart"
+                  checked={config.autoStart !== false}
+                  onCheckedChange={(checked) =>
+                    setConfig({ ...config, autoStart: checked })
+                  }
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Automatically start the workflow when triggered
+              </p>
+            </div>
+          </>
+        );
+
+      case 'action':
+        return (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="actionName">Action Name</Label>
+              <Input
+                id="actionName"
+                value={config.name || nodeData.label}
+                onChange={(e) => setConfig({ ...config, name: e.target.value })}
+                placeholder="Enter action name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="actionType">Action Type</Label>
+              <Select
+                value={config.actionType || 'custom'}
+                onValueChange={(value) => setConfig({ ...config, actionType: value })}
+              >
+                <SelectTrigger id="actionType">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="custom">Custom Action</SelectItem>
+                  <SelectItem value="api">API Call</SelectItem>
+                  <SelectItem value="database">Database Operation</SelectItem>
+                  <SelectItem value="email">Send Email</SelectItem>
+                  <SelectItem value="notification">Send Notification</SelectItem>
+                  <SelectItem value="transform">Transform Data</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="actionData">Action Data (JSON)</Label>
+              <Textarea
+                id="actionData"
+                value={JSON.stringify(config.data || {}, null, 2)}
+                onChange={(e) => {
+                  try {
+                    const data = JSON.parse(e.target.value);
+                    setConfig({ ...config, data });
+                  } catch {}
+                }}
+                placeholder='{"key": "value"}'
+                className="font-mono text-xs min-h-[100px]"
+              />
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="continueOnError">Continue on Error</Label>
+                <Switch
+                  id="continueOnError"
+                  checked={config.continueOnError === true}
+                  onCheckedChange={(checked) =>
+                    setConfig({ ...config, continueOnError: checked })
+                  }
+                />
+              </div>
+            </div>
+          </>
+        );
+
+      case 'logic':
+        return (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="logicType">Logic Type</Label>
+              <Select
+                value={config.logicType || 'condition'}
+                onValueChange={(value) => setConfig({ ...config, logicType: value })}
+              >
+                <SelectTrigger id="logicType">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="condition">If/Then Condition</SelectItem>
+                  <SelectItem value="switch">Switch/Case</SelectItem>
+                  <SelectItem value="loop">Loop/Iterate</SelectItem>
+                  <SelectItem value="merge">Merge Branches</SelectItem>
+                  <SelectItem value="filter">Filter Data</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="expression">Logic Expression</Label>
+              <Textarea
+                id="expression"
+                value={config.expression || ''}
+                onChange={(e) => setConfig({ ...config, expression: e.target.value })}
+                placeholder="e.g., data.status === 'active' && data.count > 0"
+                className="font-mono text-xs"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="branches">Number of Branches</Label>
+              <Input
+                id="branches"
+                type="number"
+                value={config.branches || 2}
+                onChange={(e) => setConfig({ ...config, branches: parseInt(e.target.value) })}
+                min="2"
+                max="10"
+              />
+            </div>
+          </>
+        );
+
+      case 'transform':
+        return (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="transformType">Transform Type</Label>
+              <Select
+                value={config.transformType || 'map'}
+                onValueChange={(value) => setConfig({ ...config, transformType: value })}
+              >
+                <SelectTrigger id="transformType">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="map">Map/Transform</SelectItem>
+                  <SelectItem value="filter">Filter</SelectItem>
+                  <SelectItem value="reduce">Reduce/Aggregate</SelectItem>
+                  <SelectItem value="sort">Sort</SelectItem>
+                  <SelectItem value="join">Join/Merge</SelectItem>
+                  <SelectItem value="split">Split</SelectItem>
+                  <SelectItem value="format">Format/Convert</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="transformCode">Transform Code</Label>
+              <Textarea
+                id="transformCode"
+                value={config.code || ''}
+                onChange={(e) => setConfig({ ...config, code: e.target.value })}
+                placeholder="// Transform function\nreturn data.map(item => ({\n  ...item,\n  processed: true\n}));"
+                className="font-mono text-xs min-h-[150px]"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="outputFormat">Output Format</Label>
+              <Select
+                value={config.outputFormat || 'json'}
+                onValueChange={(value) => setConfig({ ...config, outputFormat: value })}
+              >
+                <SelectTrigger id="outputFormat">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="json">JSON</SelectItem>
+                  <SelectItem value="csv">CSV</SelectItem>
+                  <SelectItem value="xml">XML</SelectItem>
+                  <SelectItem value="text">Plain Text</SelectItem>
+                  <SelectItem value="html">HTML</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </>
+        );
+
+      default:
+        // Generic configuration for any unknown node type
+        return (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="nodeConfig">Node Configuration</Label>
+              <Textarea
+                id="nodeConfig"
+                value={JSON.stringify(config, null, 2)}
+                onChange={(e) => {
+                  try {
+                    const newConfig = JSON.parse(e.target.value);
+                    setConfig(newConfig);
+                  } catch {}
+                }}
+                placeholder={'{\n  "key": "value"\n}'}
+                className="font-mono text-xs min-h-[200px]"
+              />
+              <p className="text-xs text-muted-foreground">
+                Edit the JSON configuration for this node
+              </p>
+            </div>
+          </>
         );
     }
   };
 
   return (
     <Sheet open={!!node} onOpenChange={() => onClose()}>
-      <SheetContent className="w-[400px] sm:w-[540px]">
+      <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto p-6">
         <SheetHeader>
           <SheetTitle>Configure Node</SheetTitle>
           <SheetDescription>
@@ -415,7 +653,7 @@ return data;"
           </SheetDescription>
         </SheetHeader>
 
-        <div className="mt-6 space-y-6">
+        <div className="mt-6 space-y-6 px-4">
           <Tabs defaultValue="general" className="w-full">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="general">General</TabsTrigger>
@@ -423,7 +661,7 @@ return data;"
               <TabsTrigger value="advanced">Advanced</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="general" className="space-y-4">
+            <TabsContent value="general" className="space-y-4 p-4 bg-muted/30 rounded-lg">
               <div className="space-y-2">
                 <Label htmlFor="label">Node Label</Label>
                 <Input
@@ -456,11 +694,11 @@ return data;"
               </div>
             </TabsContent>
 
-            <TabsContent value="config" className="space-y-4">
+            <TabsContent value="config" className="space-y-4 p-4 bg-muted/30 rounded-lg">
               {renderConfigFields()}
             </TabsContent>
 
-            <TabsContent value="advanced" className="space-y-4">
+            <TabsContent value="advanced" className="space-y-4 p-4 bg-muted/30 rounded-lg">
               <Card className="p-4">
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
@@ -506,11 +744,36 @@ return data;"
             </TabsContent>
           </Tabs>
 
-          <div className="flex justify-between pt-4 border-t">
-            <Button variant="destructive" onClick={handleDelete} className="gap-2">
-              <Trash2 className="h-4 w-4" />
-              Delete Node
-            </Button>
+          <div className="flex justify-between pt-6 mt-6 border-t">
+            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="gap-2 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete Node
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Node</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to delete this node? This action cannot be undone.
+                    All connections to this node will also be removed.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDelete}
+                    className="bg-destructive hover:bg-destructive/90"
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
             <Button onClick={handleSave} className="gap-2">
               <Save className="h-4 w-4" />
               Save Changes
