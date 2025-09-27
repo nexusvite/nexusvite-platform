@@ -47,9 +47,19 @@ interface NodeToolbarProps {
   onUpdate: (node: Node) => void;
   onDelete?: (nodeId: string) => void;
   availableNodes?: Node[];
+  executionOutputs?: Record<string, any>;
+  onRegisterExpressionEditor?: (handler: ((value: string) => void) | null) => void;
 }
 
-export function NodeToolbar({ node, onClose, onUpdate, onDelete, availableNodes = [] }: NodeToolbarProps) {
+export function NodeToolbar({
+  node,
+  onClose,
+  onUpdate,
+  onDelete,
+  availableNodes = [],
+  executionOutputs = {},
+  onRegisterExpressionEditor
+}: NodeToolbarProps) {
   const [nodeData, setNodeData] = useState(node.data);
   const [config, setConfig] = useState(node.data.config || {});
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
