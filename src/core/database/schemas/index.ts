@@ -9,6 +9,8 @@ export * from './api-logs';
 export * from './teams';
 export * from './better-auth';
 export * from './portal';
+export * from './developer-entities';
+export * from './webhooks';
 
 // Re-export relations
 export * from './relations';
