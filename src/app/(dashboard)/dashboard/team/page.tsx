@@ -673,11 +673,11 @@ export default function TeamDashboard() {
               <CardContent className="space-y-6">
                 <div className="space-y-2">
                   <Label>Team Name</Label>
-                  <Input value={selectedTeam.team.name} disabled={selectedTeam.role !== "owner"} />
+                  <Input defaultValue={selectedTeam.team.name} disabled={selectedTeam.role !== "owner"} readOnly />
                 </div>
                 <div className="space-y-2">
                   <Label>Team Slug</Label>
-                  <Input value={selectedTeam.team.slug} disabled />
+                  <Input defaultValue={selectedTeam.team.slug} disabled readOnly />
                   <p className="text-xs text-muted-foreground">
                     The team slug cannot be changed
                   </p>
@@ -685,8 +685,9 @@ export default function TeamDashboard() {
                 <div className="space-y-2">
                   <Label>Description</Label>
                   <Textarea
-                    value={selectedTeam.team.description || ""}
+                    defaultValue={selectedTeam.team.description || ""}
                     disabled={selectedTeam.role !== "owner" && selectedTeam.role !== "admin"}
+                    readOnly
                   />
                 </div>
                 {selectedTeam.role === "owner" && (
