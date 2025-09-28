@@ -1,4 +1,5 @@
 import { Node, Edge } from 'reactflow';
+import { MotiaAdapter } from './motia-adapter';
 
 export interface NodeOutput {
   nodeId: string;
@@ -39,16 +40,21 @@ export class WorkflowExecutionEngine {
   private pauseRequested = false;
   private credentials: Record<string, any> = {};
   private currentExecutionMode: 'full' | 'step' | 'until-node' = 'full';
+  private motiaAdapter: MotiaAdapter;
+  private useMotia: boolean = false;
 
   constructor(
     workflowId: string,
     nodes: Node[],
     edges: Edge[],
-    credentials?: Record<string, any>
+    credentials?: Record<string, any>,
+    useMotia: boolean = false
   ) {
     this.nodes = nodes;
     this.edges = edges;
     this.credentials = credentials || {};
+    this.useMotia = useMotia;
+    this.motiaAdapter = new MotiaAdapter('http://localhost:3000');
     this.executionState = {
       id: `exec_${Date.now()}`,
       workflowId,
@@ -58,6 +64,17 @@ export class WorkflowExecutionEngine {
       lastExecutedNodeIndex: -1,
       executionOrder: [],
     };
+  }
+
+  // Toggle Motia execution mode
+  setMotiaMode(useMotia: boolean) {
+    this.useMotia = useMotia;
+    console.log(`Workflow execution mode: ${useMotia ? 'Motia' : 'Native'}`);
+  }
+
+  // Get current execution mode
+  getMotiaMode(): boolean {
+    return this.useMotia;
   }
 
   // Subscribe to execution state changes
@@ -209,8 +226,17 @@ export class WorkflowExecutionEngine {
       };
       const resolvedConfig = this.resolveExpressions(node.data.config || {}, context);
 
-      // Execute based on node type
-      const result = await this.executeNodeByType(node, resolvedConfig, inputData);
+      let result;
+
+      // Use Motia execution if enabled
+      if (this.useMotia) {
+        console.log(`[Motia] Executing node ${node.id} (${node.data.label}) via Motia`);
+        result = await this.executeNodeViaMotia(node, resolvedConfig, inputData);
+      } else {
+        // Native execution
+        console.log(`[Native] Executing node ${node.id} (${node.data.label}) natively`);
+        result = await this.executeNodeByType(node, resolvedConfig, inputData);
+      }
 
       output.data = result;
       output.status = 'success';
@@ -225,6 +251,56 @@ export class WorkflowExecutionEngine {
     }
 
     return output;
+  }
+
+  // Execute node via Motia
+  private async executeNodeViaMotia(
+    node: Node,
+    config: any,
+    inputData: Record<string, any>
+  ): Promise<any> {
+    try {
+      // Convert node to Motia step configuration
+      const stepConfig = this.motiaAdapter.nodeToMotiaStep(node);
+
+      // Create Motia context for execution
+      const context = this.motiaAdapter.createContext(node.id);
+
+      // Call the workflow executor step via API
+      const response = await fetch('http://localhost:3000/workflow/execute', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          workflowId: this.executionState.workflowId,
+          nodeId: node.id,
+          nodeType: node.data.type,
+          nodeSubType: node.data.subType,
+          config: config,
+          inputData: inputData,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Motia execution failed: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+
+      // Check for errors in the response
+      if (!result.success) {
+        throw new Error(result.error || 'Motia execution failed');
+      }
+
+      console.log(`[Motia] Node ${node.id} executed successfully via Motia`);
+      return result.result;
+    } catch (error: any) {
+      console.error(`[Motia] Error executing node ${node.id}:`, error);
+      // Fallback to native execution if Motia fails
+      console.log(`[Motia] Falling back to native execution for node ${node.id}`);
+      return this.executeNodeByType(node, config, inputData);
+    }
   }
 
   // Execute node based on its type

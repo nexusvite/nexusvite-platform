@@ -23,9 +23,18 @@ import {
   XCircle,
   AlertCircle,
   Loader2,
+  Zap,
 } from 'lucide-react';
 import { WorkflowExecutionEngine, ExecutionState } from '@/core/workflow/execution-engine';
 import { Node, Edge } from 'reactflow';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface ExecutionControlsProps {
   nodes: Node[];
@@ -43,10 +52,11 @@ export function ExecutionControls({
   const [engine, setEngine] = useState<WorkflowExecutionEngine | null>(null);
   const [executionState, setExecutionState] = useState<ExecutionState | null>(null);
   const [executionMode, setExecutionMode] = useState<'full' | 'step'>('full');
+  const [useMotia, setUseMotia] = useState(false);
 
   useEffect(() => {
-    // Create new engine when nodes/edges change
-    const newEngine = new WorkflowExecutionEngine(workflowId, nodes, edges);
+    // Create new engine when nodes/edges change or Motia mode changes
+    const newEngine = new WorkflowExecutionEngine(workflowId, nodes, edges, undefined, useMotia);
 
     // Subscribe to state changes
     const unsubscribe = newEngine.subscribe((state) => {
@@ -59,7 +69,7 @@ export function ExecutionControls({
     return () => {
       unsubscribe();
     };
-  }, [nodes, edges, workflowId]);
+  }, [nodes, edges, workflowId, useMotia]);
 
   const handlePlay = async () => {
     if (!engine) return;
@@ -95,7 +105,7 @@ export function ExecutionControls({
     if (!engine) return;
 
     // Create fresh engine for replay
-    const newEngine = new WorkflowExecutionEngine(workflowId, nodes, edges);
+    const newEngine = new WorkflowExecutionEngine(workflowId, nodes, edges, undefined, useMotia);
     const unsubscribe = newEngine.subscribe((state) => {
       setExecutionState(state);
       onExecutionStateChange?.(state);
@@ -229,6 +239,36 @@ export function ExecutionControls({
           </SelectItem>
         </SelectContent>
       </Select>
+
+      {/* Motia Mode Toggle */}
+      <div className="h-6 w-px bg-border" />
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="flex items-center gap-2">
+              <Switch
+                id="motia-mode"
+                checked={useMotia}
+                onCheckedChange={setUseMotia}
+                disabled={isRunning || isPaused}
+              />
+              <Label
+                htmlFor="motia-mode"
+                className="flex items-center gap-1 cursor-pointer"
+              >
+                <Zap className={`h-4 w-4 ${useMotia ? 'text-yellow-500' : 'text-muted-foreground'}`} />
+                <span className="text-sm font-medium">Motia</span>
+              </Label>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Enable Motia event-driven execution engine</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Uses the Motia framework at port 3000
+            </p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
 
       {/* Status Display */}
       {executionState && executionState.status !== 'idle' && (
