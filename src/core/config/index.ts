@@ -6,7 +6,7 @@ export const config = {
     name: process.env.NEXT_PUBLIC_APP_NAME || 'NexusVite Platform',
     version: process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0',
     description: 'Distributed Apps Platform',
-    url: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+    url: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:6100',
   },
 
   // Database configuration
@@ -23,7 +23,7 @@ export const config = {
   // Authentication configuration
   auth: {
     secret: process.env.AUTH_SECRET!,
-    baseUrl: process.env.AUTH_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+    baseUrl: process.env.AUTH_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:6100',
     providers: {
       google: {
         clientId: process.env.GOOGLE_CLIENT_ID!,

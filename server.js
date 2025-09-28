@@ -5,7 +5,8 @@ const { Server: SocketIOServer } = require("socket.io");
 
 const dev = process.env.NODE_ENV !== "production";
 const hostname = "localhost";
-const port = process.env.PORT || 3000;
+// Platform standard port is 6100 (6000 is blocked by browsers as unsafe)
+const port = 6100;
 
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
@@ -22,7 +23,7 @@ app.prepare().then(() => {
   // Initialize Socket.IO
   const io = new SocketIOServer(server, {
     cors: {
-      origin: ["http://localhost:3000", "http://localhost:3001"],
+      origin: ["http://localhost:3000", "http://localhost:6100", "http://localhost:6001"],
       methods: ["GET", "POST"],
       credentials: true,
     },
@@ -136,9 +137,9 @@ app.prepare().then(() => {
     });
   });
 
-  server.listen(port, (err) => {
+  server.listen(port, '0.0.0.0', (err) => {
     if (err) throw err;
-    console.log(`> Ready on http://${hostname}:${port}`);
-    console.log(`> WebSocket server ready on ws://${hostname}:${port}`);
+    console.log(`> Ready on http://localhost:${port}`);
+    console.log(`> WebSocket server ready on ws://localhost:${port}`);
   });
 });

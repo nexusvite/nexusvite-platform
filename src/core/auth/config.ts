@@ -11,7 +11,7 @@ export const auth = betterAuth({
     schema: betterAuthSchema,
   }),
 
-  baseURL: config.auth.baseUrl || "http://localhost:3000",
+  baseURL: config.auth.baseUrl || "http://localhost:6100",
   secret: config.auth.secret,
 
   emailAndPassword: {
