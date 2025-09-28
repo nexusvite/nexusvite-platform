@@ -278,46 +278,33 @@ export class WorkflowExecutionEngine {
     switch (subType) {
       case 'http':
         try {
-          // Prepare request options
-          const requestOptions: RequestInit = {
+          // Use proxy endpoint to avoid CORS issues
+          const proxyUrl = '/api/developer/workflows/proxy';
+
+          const proxyRequest = {
+            url: config.url,
             method: config.method || 'GET',
             headers: config.headers || {},
+            body: config.body,
           };
 
-          // Add body for POST/PUT/PATCH requests
-          if (['POST', 'PUT', 'PATCH'].includes(requestOptions.method) && config.body) {
-            requestOptions.body = typeof config.body === 'string'
-              ? config.body
-              : JSON.stringify(config.body);
+          console.log(`Making HTTP ${proxyRequest.method} request to ${config.url} via proxy`);
 
-            // Set content-type if not already set
-            if (!requestOptions.headers['Content-Type']) {
-              requestOptions.headers['Content-Type'] = 'application/json';
-            }
+          const response = await fetch(proxyUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(proxyRequest),
+          });
+
+          const result = await response.json();
+
+          if (!response.ok) {
+            throw new Error(result.error || 'Proxy request failed');
           }
 
-          // Make the actual HTTP request
-          console.log(`Making HTTP ${requestOptions.method} request to ${config.url}`);
-          const response = await fetch(config.url, requestOptions);
-
-          let data;
-          const contentType = response.headers.get('content-type');
-
-          if (contentType && contentType.includes('application/json')) {
-            data = await response.json();
-          } else {
-            data = await response.text();
-          }
-
-          return {
-            url: config.url,
-            method: requestOptions.method,
-            headers: config.headers,
-            status: response.status,
-            statusText: response.statusText,
-            data: data,
-            success: response.ok,
-          };
+          return result;
         } catch (error: any) {
           console.error('HTTP request failed:', error);
           return {
