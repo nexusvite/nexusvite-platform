@@ -17,6 +17,8 @@ export interface ExecutionState {
   startTime?: Date;
   endTime?: Date;
   currentNodeId?: string;
+  lastExecutedNodeIndex?: number;
+  executionOrder?: string[];
   outputs: Record<string, NodeOutput>;
   variables: Record<string, any>;
   error?: string;
@@ -36,6 +38,7 @@ export class WorkflowExecutionEngine {
   private listeners: Array<(state: ExecutionState) => void> = [];
   private pauseRequested = false;
   private credentials: Record<string, any> = {};
+  private currentExecutionMode: 'full' | 'step' | 'until-node' = 'full';
 
   constructor(
     workflowId: string,
@@ -52,6 +55,8 @@ export class WorkflowExecutionEngine {
       status: 'idle',
       outputs: {},
       variables: {},
+      lastExecutedNodeIndex: -1,
+      executionOrder: [],
     };
   }
 
@@ -349,16 +354,33 @@ export class WorkflowExecutionEngine {
   // Main execution method
   async execute(options: ExecutionOptions = { mode: 'full' }): Promise<ExecutionState> {
     this.pauseRequested = false;
-    this.executionState.status = 'running';
-    this.executionState.startTime = new Date();
-    this.executionState.variables = options.initialVariables || {};
+    this.currentExecutionMode = options.mode;
+
+    // Only reset state if starting fresh
+    if (this.executionState.status !== 'paused') {
+      this.executionState.status = 'running';
+      this.executionState.startTime = new Date();
+      this.executionState.variables = options.initialVariables || this.executionState.variables || {};
+    } else {
+      // Resuming from pause
+      this.executionState.status = 'running';
+    }
+
     this.notify();
 
     try {
       const executionOrder = this.getExecutionOrder();
+
+      // Store execution order for resume
+      this.executionState.executionOrder = executionOrder.map(n => n.id);
+
       let startIndex = 0;
 
-      if (options.startNodeId) {
+      // Determine where to start
+      if (this.executionState.lastExecutedNodeIndex >= 0) {
+        // Resume from next node after last executed
+        startIndex = this.executionState.lastExecutedNodeIndex + 1;
+      } else if (options.startNodeId) {
         startIndex = executionOrder.findIndex(n => n.id === options.startNodeId);
         if (startIndex === -1) startIndex = 0;
       }
@@ -369,12 +391,16 @@ export class WorkflowExecutionEngine {
         // Check for pause
         if (this.pauseRequested) {
           this.executionState.status = 'paused';
+          this.executionState.lastExecutedNodeIndex = i - 1;
           this.notify();
           break;
         }
 
         // Execute node
         await this.executeNode(node);
+
+        // Update last executed index
+        this.executionState.lastExecutedNodeIndex = i;
 
         // Check if we should stop at this node
         if (options.mode === 'step') {
@@ -390,13 +416,16 @@ export class WorkflowExecutionEngine {
 
       if (this.executionState.status === 'running') {
         this.executionState.status = 'completed';
+        this.executionState.lastExecutedNodeIndex = -1; // Reset for next run
       }
     } catch (error: any) {
       this.executionState.status = 'error';
       this.executionState.error = error.message;
     } finally {
-      this.executionState.endTime = new Date();
-      this.executionState.currentNodeId = undefined;
+      if (this.executionState.status !== 'paused') {
+        this.executionState.endTime = new Date();
+        this.executionState.currentNodeId = undefined;
+      }
       this.notify();
     }
 
@@ -408,12 +437,22 @@ export class WorkflowExecutionEngine {
     this.pauseRequested = true;
   }
 
-  resume() {
+  async resume() {
     if (this.executionState.status === 'paused') {
-      const currentNodeId = this.executionState.currentNodeId;
-      this.execute({
-        mode: 'full',
-        startNodeId: currentNodeId,
+      // Continue with the same mode that was paused
+      await this.execute({
+        mode: this.currentExecutionMode,
+        initialVariables: this.executionState.variables,
+      });
+    }
+  }
+
+  async stepForward() {
+    if (this.executionState.status === 'paused' || this.executionState.status === 'idle') {
+      // Execute just one more node
+      await this.execute({
+        mode: 'step',
+        initialVariables: this.executionState.variables,
       });
     }
   }
@@ -422,6 +461,9 @@ export class WorkflowExecutionEngine {
     this.pauseRequested = true;
     this.executionState.status = 'idle';
     this.executionState.currentNodeId = undefined;
+    this.executionState.lastExecutedNodeIndex = -1;
+    this.executionState.outputs = {};
+    this.executionState.variables = {};
     this.notify();
   }
 

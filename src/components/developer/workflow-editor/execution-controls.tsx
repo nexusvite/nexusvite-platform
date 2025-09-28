@@ -65,7 +65,7 @@ export function ExecutionControls({
     if (!engine) return;
 
     if (executionState?.status === 'paused') {
-      engine.resume();
+      await engine.resume();
     } else {
       await engine.execute({ mode: executionMode });
     }
@@ -81,7 +81,14 @@ export function ExecutionControls({
 
   const handleStep = async () => {
     if (!engine) return;
-    await engine.execute({ mode: 'step' });
+
+    // If idle or completed, start fresh in step mode
+    if (!executionState || executionState.status === 'idle' || executionState.status === 'completed') {
+      await engine.execute({ mode: 'step' });
+    } else if (executionState.status === 'paused') {
+      // If paused, step forward one node
+      await engine.stepForward();
+    }
   };
 
   const handleReplay = async () => {
