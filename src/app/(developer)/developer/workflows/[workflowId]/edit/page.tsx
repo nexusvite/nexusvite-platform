@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { WorkflowCanvas } from '@/components/developer/workflow-editor/workflow-canvas';
 import { NodePalette } from '@/components/developer/workflow-editor/node-palette';
+import { MotiaStatus } from '@/components/developer/workflow-editor/motia-status';
 import {
   ResizableHandle,
   ResizablePanel,
@@ -11,6 +12,7 @@ import {
 } from '@/components/ui/resizable';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   ArrowLeft,
   Play,
@@ -42,6 +44,7 @@ export default function WorkflowEditorPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [executing, setExecuting] = useState(false);
+  const [motiaSynced, setMotiaSynced] = useState(false);
 
   useEffect(() => {
     if (workflowId) {
@@ -87,9 +90,14 @@ export default function WorkflowEditorPage() {
       });
 
       if (response.ok) {
-        const updatedWorkflow = await response.json();
-        setWorkflow(updatedWorkflow.workflow);
-        toast.success('Workflow saved');
+        const data = await response.json();
+        setWorkflow(data.workflow);
+        setMotiaSynced(data.motiaSynced || false);
+        toast.success(
+          data.motiaSynced
+            ? 'Workflow saved and synced with Motia'
+            : 'Workflow saved successfully'
+        );
       } else {
         toast.error('Failed to save workflow');
       }
@@ -273,7 +281,24 @@ export default function WorkflowEditorPage() {
           </ResizablePanel>
           <ResizableHandle />
           <ResizablePanel defaultSize={20} minSize={15} maxSize={30}>
-            <NodePalette />
+            <ScrollArea className="h-full">
+              <div className="p-4 space-y-4">
+                <NodePalette />
+                <MotiaStatus
+                  workflowId={workflow.id}
+                  workflowName={workflow.name}
+                  isSynced={motiaSynced}
+                  onSync={async () => {
+                    if (workflow.canvasState?.nodes && workflow.canvasState?.edges) {
+                      await handleSaveWorkflow(
+                        workflow.canvasState.nodes,
+                        workflow.canvasState.edges
+                      );
+                    }
+                  }}
+                />
+              </div>
+            </ScrollArea>
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>

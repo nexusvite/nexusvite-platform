@@ -3,6 +3,7 @@ import { db } from '@/core/database';
 import { workflows } from '@/core/database/schemas/workflows';
 import { eq, desc } from 'drizzle-orm';
 import { auth } from '@/core/auth/config';
+import { motiaSyncService } from '@/core/workflow/motia-sync-service';
 
 // GET - List all workflows for the user
 export async function GET(request: NextRequest) {

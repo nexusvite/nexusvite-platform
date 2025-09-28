@@ -1,3 +1,4 @@
+// Last sync: 2025-09-28T06:48:08.190Z - Workflow: Carly Britt
 import { workbenchXPath, TutorialStep } from '@motiadev/workbench'
 
 export const steps: TutorialStep[] = [
