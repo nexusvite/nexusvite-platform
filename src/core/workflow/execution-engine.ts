@@ -76,27 +76,57 @@ export class WorkflowExecutionEngine {
   private getExecutionOrder(): Node[] {
     const visited = new Set<string>();
     const order: Node[] = [];
+    const inDegree = new Map<string, number>();
 
-    const visit = (nodeId: string) => {
-      if (visited.has(nodeId)) return;
-      visited.add(nodeId);
+    // Calculate in-degree for each node
+    this.nodes.forEach(node => {
+      inDegree.set(node.id, 0);
+    });
 
-      // Visit all dependencies first
-      const incomingEdges = this.edges.filter(e => e.target === nodeId);
-      incomingEdges.forEach(edge => {
-        visit(edge.source);
-      });
+    this.edges.forEach(edge => {
+      const current = inDegree.get(edge.target) || 0;
+      inDegree.set(edge.target, current + 1);
+    });
 
+    // Find all nodes with no incoming edges (triggers)
+    const queue: string[] = [];
+    inDegree.forEach((degree, nodeId) => {
+      if (degree === 0) {
+        queue.push(nodeId);
+      }
+    });
+
+    // Process nodes in topological order
+    while (queue.length > 0) {
+      const nodeId = queue.shift()!;
       const node = this.nodes.find(n => n.id === nodeId);
-      if (node) order.push(node);
-    };
+      if (node) {
+        order.push(node);
 
-    // Start with trigger nodes (no incoming edges)
-    const triggerNodes = this.nodes.filter(node =>
-      !this.edges.some(edge => edge.target === node.id)
-    );
+        // Reduce in-degree for all neighbors
+        const outgoingEdges = this.edges.filter(e => e.source === nodeId);
+        outgoingEdges.forEach(edge => {
+          const targetDegree = inDegree.get(edge.target) || 0;
+          inDegree.set(edge.target, targetDegree - 1);
 
-    triggerNodes.forEach(node => visit(node.id));
+          // If in-degree becomes 0, add to queue
+          if (targetDegree - 1 === 0) {
+            queue.push(edge.target);
+          }
+        });
+      }
+    }
+
+    // Check for cycles (if not all nodes were processed)
+    if (order.length !== this.nodes.length) {
+      console.warn('Warning: Workflow contains cycles or disconnected nodes');
+      // Add any remaining nodes that weren't reached
+      this.nodes.forEach(node => {
+        if (!order.some(n => n.id === node.id)) {
+          order.push(node);
+        }
+      });
+    }
 
     return order;
   }
@@ -247,13 +277,56 @@ export class WorkflowExecutionEngine {
   ): Promise<any> {
     switch (subType) {
       case 'http':
-        // Simulate HTTP request
-        return {
-          url: config.url,
-          method: config.method,
-          headers: config.headers,
-          response: { status: 200, data: 'Mock response' },
-        };
+        try {
+          // Prepare request options
+          const requestOptions: RequestInit = {
+            method: config.method || 'GET',
+            headers: config.headers || {},
+          };
+
+          // Add body for POST/PUT/PATCH requests
+          if (['POST', 'PUT', 'PATCH'].includes(requestOptions.method) && config.body) {
+            requestOptions.body = typeof config.body === 'string'
+              ? config.body
+              : JSON.stringify(config.body);
+
+            // Set content-type if not already set
+            if (!requestOptions.headers['Content-Type']) {
+              requestOptions.headers['Content-Type'] = 'application/json';
+            }
+          }
+
+          // Make the actual HTTP request
+          console.log(`Making HTTP ${requestOptions.method} request to ${config.url}`);
+          const response = await fetch(config.url, requestOptions);
+
+          let data;
+          const contentType = response.headers.get('content-type');
+
+          if (contentType && contentType.includes('application/json')) {
+            data = await response.json();
+          } else {
+            data = await response.text();
+          }
+
+          return {
+            url: config.url,
+            method: requestOptions.method,
+            headers: config.headers,
+            status: response.status,
+            statusText: response.statusText,
+            data: data,
+            success: response.ok,
+          };
+        } catch (error: any) {
+          console.error('HTTP request failed:', error);
+          return {
+            url: config.url,
+            method: config.method || 'GET',
+            error: error.message,
+            success: false,
+          };
+        }
 
       case 'email':
         // Simulate email sending
@@ -371,6 +444,9 @@ export class WorkflowExecutionEngine {
     try {
       const executionOrder = this.getExecutionOrder();
 
+      console.log('Execution order:', executionOrder.map(n => `${n.id} (${n.data.label})`));
+      console.log('Total nodes to execute:', executionOrder.length);
+
       // Store execution order for resume
       this.executionState.executionOrder = executionOrder.map(n => n.id);
 
@@ -387,6 +463,8 @@ export class WorkflowExecutionEngine {
 
       for (let i = startIndex; i < executionOrder.length; i++) {
         const node = executionOrder[i];
+
+        console.log(`Executing node ${i + 1}/${executionOrder.length}: ${node.id} (${node.data.label})`);
 
         // Check for pause
         if (this.pauseRequested) {
