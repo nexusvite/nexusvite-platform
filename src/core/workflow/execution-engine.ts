@@ -48,12 +48,12 @@ export class WorkflowExecutionEngine {
     nodes: Node[],
     edges: Edge[],
     credentials?: Record<string, any>,
-    useMotia: boolean = false
+    useMotia: boolean = true // Always default to Motia
   ) {
     this.nodes = nodes;
     this.edges = edges;
     this.credentials = credentials || {};
-    this.useMotia = useMotia;
+    this.useMotia = true; // Always use Motia
     this.motiaAdapter = new MotiaAdapter('http://localhost:3000');
     this.executionState = {
       id: `exec_${Date.now()}`,
@@ -66,10 +66,11 @@ export class WorkflowExecutionEngine {
     };
   }
 
-  // Toggle Motia execution mode
+  // Motia is always enabled - no toggle needed
   setMotiaMode(useMotia: boolean) {
-    this.useMotia = useMotia;
-    console.log(`Workflow execution mode: ${useMotia ? 'Motia' : 'Native'}`);
+    // Always use Motia, ignore the parameter
+    this.useMotia = true;
+    console.log(`Workflow execution mode: Motia (always enabled)`);
   }
 
   // Get current execution mode
@@ -267,6 +268,7 @@ export class WorkflowExecutionEngine {
       const context = this.motiaAdapter.createContext(node.id);
 
       // Call the workflow executor step via API
+      // Use the WorkflowExecutor step API endpoint
       const response = await fetch('http://localhost:3000/workflow/execute', {
         method: 'POST',
         headers: {

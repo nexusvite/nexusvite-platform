@@ -13,9 +13,12 @@ declare module 'motia' {
 
   interface Handlers {
     'WorkflowExecutor': ApiRouteHandler<{ workflowId: string; nodeId: string; nodeType: string; nodeSubType?: string; config: Record<string, unknown>; inputData?: Record<string, unknown> }, unknown, never>
+    'wf_cf972fa7-7806-4c15-8a86-07086e506377_orchestrator': ApiRouteHandler<Record<string, unknown>, unknown, { topic: 'workflow.cf972fa7-7806-4c15-8a86-07086e506377.start'; data: never }>
+    'wf_cf972fa7-7806-4c15-8a86-07086e506377_manual_1759041836505': EventHandler<never, { topic: 'workflow.cf972fa7-7806-4c15-8a86-07086e506377.node.manual_1759041836505.completed'; data: never }>
     'StateAuditJob': CronHandler<{ topic: 'notification'; data: { templateId: string; email: string; templateData: Record<string, unknown> } }>
     'ProcessFoodOrder': EventHandler<{ email: string; quantity: number; petId: number }, { topic: 'notification'; data: { templateId: string; email: string; templateData: Record<string, unknown> } }>
     'Notification': EventHandler<{ templateId: string; email: string; templateData: Record<string, unknown> }, never>
     'ApiTrigger': ApiRouteHandler<{ pet: { name: string; photoUrl: string }; foodOrder?: { id: string; quantity: number } }, ApiResponse<200, { id: number; name: string; photoUrl: string }>, { topic: 'process-food-order'; data: { email: string; quantity: number; petId: number } }>
+    'wf_cf972fa7-7806-4c15-8a86-07086e506377_http_1759042035537': EventHandler<never, never>
   }
 }

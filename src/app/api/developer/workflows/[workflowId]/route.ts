@@ -3,6 +3,7 @@ import { db } from '@/core/database';
 import { workflows, workflowNodes, workflowConnections } from '@/core/database/schemas/workflows';
 import { eq, and } from 'drizzle-orm';
 import { auth } from '@/core/auth/config';
+import { motiaSyncService } from '@/core/workflow/motia-sync-service';
 
 // GET - Get a single workflow
 export async function GET(
@@ -135,9 +136,30 @@ export async function PATCH(
 
         await db.insert(workflowConnections).values(connectionsToInsert);
       }
+
+      // Sync with Motia if the workflow has nodes
+      if (data.canvasState.nodes && data.canvasState.nodes.length > 0) {
+        try {
+          await motiaSyncService.syncWorkflow({
+            id: workflowId,
+            name: updatedWorkflow.name,
+            description: updatedWorkflow.description,
+            nodes: data.canvasState.nodes,
+            edges: data.canvasState.edges || [],
+            userId: session.user.id
+          });
+          console.log(`[Workflow API] Successfully synced workflow ${workflowId} with Motia`);
+        } catch (error) {
+          console.error(`[Workflow API] Error syncing with Motia:`, error);
+          // Don't fail the request if Motia sync fails
+        }
+      }
     }
 
-    return NextResponse.json({ workflow: updatedWorkflow });
+    return NextResponse.json({
+      workflow: updatedWorkflow,
+      motiaSynced: data.canvasState?.nodes?.length > 0
+    });
   } catch (error) {
     console.error('Error updating workflow:', error);
     return NextResponse.json(
@@ -177,6 +199,15 @@ export async function DELETE(
         { error: 'Workflow not found' },
         { status: 404 }
       );
+    }
+
+    // Remove from Motia
+    try {
+      await motiaSyncService.removeWorkflow(workflowId);
+      console.log(`[Workflow API] Removed workflow ${workflowId} from Motia`);
+    } catch (error) {
+      console.error(`[Workflow API] Error removing from Motia:`, error);
+      // Don't fail the request if Motia removal fails
     }
 
     return NextResponse.json({ success: true });
