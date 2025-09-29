@@ -11,6 +11,8 @@ export * from './better-auth';
 export * from './portal';
 export * from './developer-entities';
 export * from './webhooks';
+export * from './workflows';
+export * from './workflow-execution';
 
 // Re-export relations
 export * from './relations';
